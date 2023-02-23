@@ -37,7 +37,7 @@ async function make_transaction(req, res) {
         }
         let account = await accounts.findOne({ address: from });
         to = account.account_owner;
-        if (!to || !account.active) {
+        if (!to || account.active === false) {
           return main_helper.error_response(
             res,
             "Cannot withdraw from this account"
@@ -60,7 +60,7 @@ async function make_transaction(req, res) {
           address: to,
         });
         from = account.account_owner;
-        if (!from || !account.active) {
+        if (!from || account.active === false) {
           return main_helper.error_response(
             res,
             "Cannot deposit to this account"
@@ -83,7 +83,7 @@ async function make_transaction(req, res) {
           address: to,
         });
         from = account.account_owner;
-        if (!from || !account.active) {
+        if (!from || account.active === false) {
           return main_helper.error_response(
             res,
             "Cannot deposit to this account"
