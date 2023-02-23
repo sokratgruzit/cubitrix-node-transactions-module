@@ -211,7 +211,7 @@ async function update_transaction_status(req, res) {
           { tx_status: "cancelled" }
         );
         if (tx_updated) {
-          return main_helper.success_response(res, "Transaction approved");
+          return main_helper.success_response(res, "Transaction cancelled");
         }
       }
     }
