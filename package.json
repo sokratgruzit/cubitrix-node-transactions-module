@@ -1,0 +1,25 @@
+{
+  "name": "@cubitrix/cubitrix-node-transactions-module",
+  "version": "0.0.9",
+  "description": "module for managing globals data",
+  "main": "transactions.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test_api": "nodemon test.js"
+  },
+  "author": "jinx",
+  "license": "MIT",
+  "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^6.8.1",
+    "web3": "^1.8.1",
+    "@cubitrix/models": "0.0.10"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  }
+}
