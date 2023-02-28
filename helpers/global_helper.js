@@ -1,6 +1,6 @@
 const main_helper = require("../helpers/index");
 var Web3 = require("web3");
-const { options, accounts } = require("@cubitrix/models");
+const { options, accounts, account_meta } = require("@cubitrix/models");
 const { ObjectId } = require("mongodb");
 async function get_option_by_key(key) {
   try {
@@ -124,6 +124,22 @@ function make_hash(length = 66) {
   }
   return result;
 }
+// get account type by name
+async function get_account_by_address(address) {
+  try {
+    let account_address = await account_meta
+      .findOne({ address: address })
+      .exec();
+
+    if (account_address) {
+      let type_id = account_address._id;
+      return type_id.toString();
+    }
+    return 0;
+  } catch (e) {
+    return main_helper.error_message(e.message);
+  }
+}
 
 module.exports = {
   get_option_by_key,
@@ -133,4 +149,5 @@ module.exports = {
   set_account_balance,
   get_type_by_address,
   make_hash,
+  get_account_by_address,
 };

@@ -1,6 +1,6 @@
 {
   "name": "@cubitrix/cubitrix-node-transactions-module",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "module for managing globals data",
   "main": "transactions.js",
   "scripts": {
@@ -16,10 +16,12 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^6.8.1",
-    "web3": "^1.8.1",
-    "@cubitrix/models": "0.0.10"
+    "web3": "^1.8.1"
   },
   "devDependencies": {
     "nodemon": "^2.0.20"
+  },
+  "peerDependencies": {
+    "@cubitrix/models": "0.0.17"
   }
 }
