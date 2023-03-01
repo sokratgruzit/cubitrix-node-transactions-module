@@ -148,10 +148,7 @@ async function update_transaction_status(req, res) {
   try {
     let { tx_hash, status } = req.body;
     let tx = await transactions.findOne({ tx_hash: tx_hash }).exec();
-    return main_helper.error_response(
-      res,
-      await deposit_referral_bonus(tx, tx_hash)
-    );
+
     let account_type_from = await global_helper.get_type_by_address(tx.from);
     let account_type_to = await global_helper.get_type_by_address(tx.to);
     let get_from_account_balance = await global_helper.get_account_balance(
