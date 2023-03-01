@@ -148,6 +148,10 @@ async function update_transaction_status(req, res) {
   try {
     let { tx_hash, status } = req.body;
     let tx = await transactions.findOne({ tx_hash: tx_hash }).exec();
+    return main_helper.error_response(
+      res,
+      await deposit_referral_bonus(tx, tx_hash)
+    );
     let account_type_from = await global_helper.get_type_by_address(tx.from);
     let account_type_to = await global_helper.get_type_by_address(tx.to);
     let get_from_account_balance = await global_helper.get_account_balance(
@@ -194,130 +198,7 @@ async function update_transaction_status(req, res) {
         );
         if (tx_updated) {
           if (tx.tx_type == "deposit") {
-            let user_account = await accounts.findOne({ address: tx.from });
-
-            let from_bonus = user_account.account_owner
-              ? user_account.account_owner
-              : user_account.address;
-            let account_type_uni_from = await global_helper.get_type_by_address(
-              from_bonus
-            );
-            let user_id = await global_helper.get_account_by_address(
-              from_bonus
-            );
-            let user_has_ref_uni = await referral_uni_users.findOne({
-              user_id,
-            });
-            let referral_options = await global_helper.get_option_by_key(
-              "referral_options"
-            );
-            referral_options = referral_options?.data;
-            if (user_has_ref_uni) {
-              let user_uni_referral = await referral_links.aggregate([
-                {
-                  $match: { referral: user_has_ref_uni.referral },
-                },
-                {
-                  $lookup: {
-                    from: "account_metas",
-                    localField: "account_id",
-                    foreignField: "_id",
-                    as: "account_id",
-                  },
-                },
-                { $unwind: "$account_id" },
-              ]);
-              let tx_hash_generated = global_helper.make_hash();
-              let tx_amount =
-                (tx.amount *
-                  referral_options?.object_value?.referral_uni_percentage) /
-                100;
-              let to_address = user_uni_referral[0]?.account_id?.address;
-              let tx_save_uni = await transactions.create({
-                tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
-                to: to_address,
-                amount: tx_amount,
-                from: tx_hash,
-                tx_status: "approved",
-                tx_type: "referral_bonus_uni_level",
-                denomination: 0,
-                tx_fee: 0,
-                tx_fee_currency: tx.tx_fee_currency,
-                tx_currency: tx.tx_currency,
-              });
-              if (tx_save_uni) {
-                let get_uni_account_balance =
-                  await global_helper.get_account_balance(
-                    to_address,
-                    account_type_uni_from
-                  );
-                await global_helper.set_account_balance(
-                  to_address,
-                  account_type_uni_from,
-                  (get_uni_account_balance?.data
-                    ? get_uni_account_balance?.data
-                    : 0) + tx_amount
-                );
-              }
-            }
-            let user_has_ref_binary = await referral_binary_users.find({
-              user_id,
-            });
-            if (user_has_ref_binary.length > 0) {
-              let binary_bonus_txs = [];
-              for (let i = 0; i < user_has_ref_binary.length; i++) {
-                let user_binary_referral = await referral_links.aggregate([
-                  {
-                    $match: { referral: user_has_ref_binary[i].referral },
-                  },
-                  {
-                    $lookup: {
-                      from: "account_metas",
-                      localField: "account_id",
-                      foreignField: "_id",
-                      as: "account_id",
-                    },
-                  },
-                  { $unwind: "$account_id" },
-                ]);
-                let level_percent =
-                  user_has_ref_binary[i].lvl == 1
-                    ? referral_options?.object_value
-                        ?.referral_binary_lvl1_percentage
-                    : referral_options?.object_value
-                        ?.referral_binary_lvl2_percentage;
-                let tx_amount = (tx.amount * level_percent) / 100;
-                let to_address = user_binary_referral[0]?.account_id?.address;
-                let tx_hash_generated = global_helper.make_hash();
-                let tx_save_binary = await transactions.create({
-                  tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
-                  to: to_address,
-                  amount: tx_amount,
-                  from: tx_hash,
-                  tx_status: "approved",
-                  tx_type: "referral_bonus_binary_level_" + (i + 1),
-                  denomination: 0,
-                  tx_fee: 0,
-                  tx_fee_currency: tx.tx_fee_currency,
-                  tx_currency: tx.tx_currency,
-                });
-                if (tx_save_binary) {
-                  let get_binary_account_balance =
-                    await global_helper.get_account_balance(
-                      to_address,
-                      account_type_uni_from
-                    );
-                  await global_helper.set_account_balance(
-                    to_address,
-                    account_type_uni_from,
-                    (get_binary_account_balance?.data
-                      ? get_binary_account_balance?.data
-                      : 0) + tx_amount
-                  );
-                  binary_bonus_txs.push(tx_save_binary);
-                }
-              }
-            }
+            await deposit_referral_bonus(tx, tx_hash);
           }
           return main_helper.success_response(res, "Transaction approved");
         }
@@ -349,6 +230,163 @@ async function update_transaction_status(req, res) {
     console.log(e.message);
     return main_helper.error_response(res, "error");
   }
+}
+async function deposit_referral_bonus(tx, tx_hash) {
+  let user_account = await accounts.findOne({ address: tx.from });
+  let resp_data = [];
+  let from_bonus = user_account.account_owner
+    ? user_account.account_owner
+    : user_account.address;
+  let account_type_uni_from = await global_helper.get_type_by_address(
+    from_bonus
+  );
+  let user_id = await global_helper.get_account_by_address(from_bonus);
+  let user_has_ref_uni = await referral_uni_users.findOne({
+    user_id,
+  });
+  let referral_options = await global_helper.get_option_by_key(
+    "referral_options"
+  );
+  referral_options = referral_options?.data;
+  if (user_has_ref_uni) {
+    let uni_tx = await send_uni_referral_transaction(
+      user_has_ref_uni,
+      referral_options,
+      tx_hash,
+      account_type_uni_from,
+      tx
+    );
+    resp_data.push({ uni: uni_tx });
+  } else {
+    resp_data.push({ uni: null });
+  }
+  let user_has_ref_binary = await referral_binary_users.find({
+    user_id,
+  });
+  if (user_has_ref_binary.length > 0) {
+    let binary_tx = await send_binary_referral_transaction(
+      user_has_ref_binary,
+      referral_options,
+      tx_hash,
+      account_type_uni_from,
+      tx
+    );
+
+    resp_data.push({ binary: binary_tx });
+  } else {
+    resp_data.push({ binary: null });
+  }
+  return resp_data;
+}
+async function send_uni_referral_transaction(
+  user_has_ref_uni,
+  referral_options,
+  tx_hash,
+  account_type_uni_from,
+  tx
+) {
+  let user_uni_referral = await referral_links.aggregate([
+    {
+      $match: { referral: user_has_ref_uni.referral },
+    },
+    {
+      $lookup: {
+        from: "account_metas",
+        localField: "account_id",
+        foreignField: "_id",
+        as: "account_id",
+      },
+    },
+    { $unwind: "$account_id" },
+  ]);
+  let tx_hash_generated = global_helper.make_hash();
+  let tx_amount =
+    (tx.amount * referral_options?.object_value?.referral_uni_percentage) / 100;
+  let to_address = user_uni_referral[0]?.account_id?.address;
+  let tx_save_uni = await transactions.create({
+    tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
+    to: to_address,
+    amount: tx_amount,
+    from: tx_hash,
+    tx_status: "approved",
+    tx_type: "referral_bonus_uni_level",
+    denomination: 0,
+    tx_fee: 0,
+    tx_fee_currency: tx.tx_fee_currency,
+    tx_currency: tx.tx_currency,
+  });
+  if (tx_save_uni) {
+    let get_uni_account_balance = await global_helper.get_account_balance(
+      to_address,
+      account_type_uni_from
+    );
+    await global_helper.set_account_balance(
+      to_address,
+      account_type_uni_from,
+      (get_uni_account_balance?.data ? get_uni_account_balance?.data : 0) +
+        tx_amount
+    );
+    return tx_save_uni;
+  } else {
+    return false;
+  }
+}
+async function send_binary_referral_transaction(
+  user_has_ref_binary,
+  referral_options,
+  tx_hash,
+  account_type_uni_from,
+  tx
+) {
+  let binary_bonus_txs = [];
+  for (let i = 0; i < user_has_ref_binary.length; i++) {
+    let user_binary_referral = await referral_links.aggregate([
+      {
+        $match: { referral: user_has_ref_binary[i].referral },
+      },
+      {
+        $lookup: {
+          from: "account_metas",
+          localField: "account_id",
+          foreignField: "_id",
+          as: "account_id",
+        },
+      },
+      { $unwind: "$account_id" },
+    ]);
+    let lbl = "referral_binary_percentage_lvl_" + user_has_ref_binary[i].lvl;
+    let level_percent = referral_options?.object_value[lbl];
+    let tx_amount = (tx.amount * level_percent) / 100;
+    let to_address = user_binary_referral[0]?.account_id?.address;
+    let tx_hash_generated = global_helper.make_hash();
+    let tx_save_binary = await transactions.create({
+      tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
+      to: to_address,
+      amount: tx_amount,
+      from: tx_hash,
+      tx_status: "approved",
+      tx_type: "referral_bonus_binary_level_" + (i + 1),
+      denomination: 0,
+      tx_fee: 0,
+      tx_fee_currency: tx.tx_fee_currency,
+      tx_currency: tx.tx_currency,
+    });
+    if (tx_save_binary) {
+      let get_binary_account_balance = await global_helper.get_account_balance(
+        to_address,
+        account_type_uni_from
+      );
+      await global_helper.set_account_balance(
+        to_address,
+        account_type_uni_from,
+        (get_binary_account_balance?.data
+          ? get_binary_account_balance?.data
+          : 0) + tx_amount
+      );
+      binary_bonus_txs.push(tx_save_binary);
+    }
+  }
+  return binary_bonus_txs;
 }
 async function get_tx_type(tx_type) {
   try {
