@@ -149,10 +149,10 @@ async function update_transaction_status(req, res) {
     let { tx_hash, status } = req.body;
     let tx = await transactions.findOne({ tx_hash: tx_hash }).exec();
 
-    return main_helper.success_response(
-      res,
-      await deposit_referral_bonus(tx, tx_hash)
-    );
+    // return main_helper.success_response(
+    //   res,
+    //   await deposit_referral_bonus(tx, tx_hash)
+    // );
 
     let account_type_from = await global_helper.get_type_by_address(tx.from);
     let account_type_to = await global_helper.get_type_by_address(tx.to);
@@ -316,10 +316,10 @@ async function send_uni_referral_transaction(
     },
     { $unwind: "$account_id" },
   ]);
-  let tx_hash_generated = global_helper.make_hash();
   let tx_amount =
     (tx.amount * referral_options?.object_value?.referral_uni_percentage) / 100;
   let to_address = user_uni_referral[0]?.account_id?.address;
+  let tx_hash_generated = global_helper.make_hash();
   let tx_save_uni = await transactions.create({
     tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
     to: to_address,
@@ -348,6 +348,13 @@ async function send_uni_referral_transaction(
     return false;
   }
 }
+async function check_user_bonus_maximum(address, bonus_type) {
+  let tx_amount = await transactions.aggregate([
+    { $match: { to: address, tx_type: bonus_type } },
+    { $group: { _id: null, amount: { $sum: "$amount" } } },
+  ]);
+  return tx_amount[0].amount;
+}
 async function send_binary_referral_transaction(
   user_has_ref_binary,
   referral_options,
@@ -372,35 +379,46 @@ async function send_binary_referral_transaction(
       { $unwind: "$account_id" },
     ]);
     let lbl = "referral_binary_percentage_lvl_" + user_has_ref_binary[i].lvl;
+    let lba = "referral_binary_max_amount_lvl_" + user_has_ref_binary[i].lvl;
     let level_percent = referral_options?.object_value[lbl];
     let tx_amount = (tx.amount * level_percent) / 100;
     let to_address = user_binary_referral[0]?.account_id?.address;
-    let tx_hash_generated = global_helper.make_hash();
-    let tx_save_binary = await transactions.create({
-      tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
-      to: to_address,
-      amount: tx_amount,
-      from: tx_hash,
-      tx_status: "approved",
-      tx_type: "referral_bonus_binary_level_" + (i + 1),
-      denomination: 0,
-      tx_fee: 0,
-      tx_fee_currency: tx.tx_fee_currency,
-      tx_currency: tx.tx_currency,
-    });
-    if (tx_save_binary) {
-      let get_binary_account_balance = await global_helper.get_account_balance(
-        to_address,
-        account_type_uni_from
-      );
-      await global_helper.set_account_balance(
-        to_address,
-        account_type_uni_from,
-        (get_binary_account_balance?.data
-          ? get_binary_account_balance?.data
-          : 0) + tx_amount
-      );
-      binary_bonus_txs.push(tx_save_binary);
+    let already_taken_bonus = await check_user_bonus_maximum(
+      to_address,
+      "referral_bonus_binary_level_" + (i + 1)
+    );
+    if (
+      already_taken_bonus + tx_amount <=
+      referral_options?.object_value[lba]
+    ) {
+      let tx_hash_generated = global_helper.make_hash();
+      let tx_save_binary = await transactions.create({
+        tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
+        to: to_address,
+        amount: tx_amount,
+        from: tx_hash,
+        tx_status: "approved",
+        tx_type: "referral_bonus_binary_level_" + (i + 1),
+        denomination: 0,
+        tx_fee: 0,
+        tx_fee_currency: tx.tx_fee_currency,
+        tx_currency: tx.tx_currency,
+      });
+      if (tx_save_binary) {
+        let get_binary_account_balance =
+          await global_helper.get_account_balance(
+            to_address,
+            account_type_uni_from
+          );
+        await global_helper.set_account_balance(
+          to_address,
+          account_type_uni_from,
+          (get_binary_account_balance?.data
+            ? get_binary_account_balance?.data
+            : 0) + tx_amount
+        );
+        binary_bonus_txs.push(tx_save_binary);
+      }
     }
   }
   return binary_bonus_txs;
