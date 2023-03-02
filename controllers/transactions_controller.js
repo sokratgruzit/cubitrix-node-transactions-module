@@ -149,6 +149,11 @@ async function update_transaction_status(req, res) {
     let { tx_hash, status } = req.body;
     let tx = await transactions.findOne({ tx_hash: tx_hash }).exec();
 
+    return main_helper.success_response(
+      res,
+      await deposit_referral_bonus(tx, tx_hash)
+    );
+
     let account_type_from = await global_helper.get_type_by_address(tx.from);
     let account_type_to = await global_helper.get_type_by_address(tx.to);
     let get_from_account_balance = await global_helper.get_account_balance(
@@ -229,6 +234,13 @@ async function update_transaction_status(req, res) {
   }
 }
 async function deposit_referral_bonus(tx, tx_hash) {
+  let referral_options = await global_helper.get_option_by_key(
+    "referral_options"
+  );
+  referral_options = referral_options?.data;
+  if (referral_options.object_value.referral_activated == "none") {
+    return false;
+  }
   let user_account = await accounts.findOne({ address: tx.from });
   let resp_data = [];
   let from_bonus = user_account.account_owner
@@ -238,41 +250,49 @@ async function deposit_referral_bonus(tx, tx_hash) {
     from_bonus
   );
   let user_id = await global_helper.get_account_by_address(from_bonus);
-  let user_has_ref_uni = await referral_uni_users.findOne({
-    user_id,
-  });
-  let referral_options = await global_helper.get_option_by_key(
-    "referral_options"
-  );
-  referral_options = referral_options?.data;
-  if (user_has_ref_uni) {
-    let uni_tx = await send_uni_referral_transaction(
-      user_has_ref_uni,
-      referral_options,
-      tx_hash,
-      account_type_uni_from,
-      tx
-    );
-    resp_data.push({ uni: uni_tx });
-  } else {
-    resp_data.push({ uni: null });
-  }
-  let user_has_ref_binary = await referral_binary_users.find({
-    user_id,
-  });
-  if (user_has_ref_binary.length > 0) {
-    let binary_tx = await send_binary_referral_transaction(
-      user_has_ref_binary,
-      referral_options,
-      tx_hash,
-      account_type_uni_from,
-      tx
-    );
+  if (
+    referral_options.object_value.referral_activated == "all" ||
+    referral_options.object_value.referral_activated == "uni"
+  ) {
+    let user_has_ref_uni = await referral_uni_users.findOne({
+      user_id,
+    });
 
-    resp_data.push({ binary: binary_tx });
-  } else {
-    resp_data.push({ binary: null });
+    if (user_has_ref_uni) {
+      let uni_tx = await send_uni_referral_transaction(
+        user_has_ref_uni,
+        referral_options,
+        tx_hash,
+        account_type_uni_from,
+        tx
+      );
+      resp_data.push({ uni: uni_tx });
+    } else {
+      resp_data.push({ uni: null });
+    }
   }
+  if (
+    referral_options.object_value.referral_activated == "all" ||
+    referral_options.object_value.referral_activated == "binary"
+  ) {
+    let user_has_ref_binary = await referral_binary_users.find({
+      user_id,
+    });
+    if (user_has_ref_binary.length > 0) {
+      let binary_tx = await send_binary_referral_transaction(
+        user_has_ref_binary,
+        referral_options,
+        tx_hash,
+        account_type_uni_from,
+        tx
+      );
+
+      resp_data.push({ binary: binary_tx });
+    } else {
+      resp_data.push({ binary: null });
+    }
+  }
+
   return resp_data;
 }
 async function send_uni_referral_transaction(
