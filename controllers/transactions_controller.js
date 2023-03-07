@@ -160,6 +160,7 @@ async function update_transaction_status(req, res) {
       tx.from,
       account_type_from
     );
+    let referral_resp;
     let get_to_account_balance = await global_helper.get_account_balance(
       tx.to,
       account_type_to
@@ -200,9 +201,12 @@ async function update_transaction_status(req, res) {
         );
         if (tx_updated) {
           if (tx.tx_type == "deposit") {
-            await deposit_referral_bonus(tx, tx_hash);
+            referral_resp = await deposit_referral_bonus(tx, tx_hash);
           }
-          return main_helper.success_response(res, "Transaction approved");
+          return main_helper.success_response(res, {
+            message: "Transaction approved",
+            referral_resp,
+          });
         }
       } else {
         return main_helper.error_response(
@@ -320,33 +324,34 @@ async function send_uni_referral_transaction(
     (tx.amount * referral_options?.object_value?.referral_uni_percentage) / 100;
   let to_address = user_uni_referral[0]?.account_id?.address;
   let tx_hash_generated = global_helper.make_hash();
-  let tx_save_uni = await transactions.create({
-    tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
-    to: to_address,
-    amount: tx_amount,
-    from: tx_hash,
-    tx_status: "approved",
-    tx_type: "referral_bonus_uni_level",
-    denomination: 0,
-    tx_fee: 0,
-    tx_fee_currency: tx.tx_fee_currency,
-    tx_currency: tx.tx_currency,
-  });
-  if (tx_save_uni) {
-    let get_uni_account_balance = await global_helper.get_account_balance(
-      to_address,
-      account_type_uni_from
-    );
-    await global_helper.set_account_balance(
-      to_address,
-      account_type_uni_from,
-      (get_uni_account_balance?.data ? get_uni_account_balance?.data : 0) +
-        tx_amount
-    );
-    return tx_save_uni;
-  } else {
-    return false;
+  if (tx.to != to_address) {
+    let tx_save_uni = await transactions.create({
+      tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
+      to: to_address,
+      amount: tx_amount,
+      from: tx.to,
+      tx_status: "approved",
+      tx_type: "referral_bonus_uni_level",
+      denomination: 0,
+      tx_fee: 0,
+      tx_fee_currency: tx.tx_fee_currency,
+      tx_currency: tx.tx_currency,
+    });
+    if (tx_save_uni) {
+      let get_uni_account_balance = await global_helper.get_account_balance(
+        to_address,
+        account_type_uni_from
+      );
+      await global_helper.set_account_balance(
+        to_address,
+        account_type_uni_from,
+        (get_uni_account_balance?.data ? get_uni_account_balance?.data : 0) +
+          tx_amount
+      );
+      return tx_save_uni;
+    }
   }
+  return false;
 }
 async function check_user_bonus_maximum(address, bonus_type) {
   let tx_amount = await transactions.aggregate([
@@ -392,32 +397,34 @@ async function send_binary_referral_transaction(
       referral_options?.object_value[lba]
     ) {
       let tx_hash_generated = global_helper.make_hash();
-      let tx_save_binary = await transactions.create({
-        tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
-        to: to_address,
-        amount: tx_amount,
-        from: tx_hash,
-        tx_status: "approved",
-        tx_type: "referral_bonus_binary_level_" + (i + 1),
-        denomination: 0,
-        tx_fee: 0,
-        tx_fee_currency: tx.tx_fee_currency,
-        tx_currency: tx.tx_currency,
-      });
-      if (tx_save_binary) {
-        let get_binary_account_balance =
-          await global_helper.get_account_balance(
+      if (tx.to != to_address) {
+        let tx_save_binary = await transactions.create({
+          tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
+          to: to_address,
+          amount: tx_amount,
+          from: tx.to,
+          tx_status: "approved",
+          tx_type: "referral_bonus_binary_level_" + (i + 1),
+          denomination: 0,
+          tx_fee: 0,
+          tx_fee_currency: tx.tx_fee_currency,
+          tx_currency: tx.tx_currency,
+        });
+        if (tx_save_binary) {
+          let get_binary_account_balance =
+            await global_helper.get_account_balance(
+              to_address,
+              account_type_uni_from
+            );
+          await global_helper.set_account_balance(
             to_address,
-            account_type_uni_from
+            account_type_uni_from,
+            (get_binary_account_balance?.data
+              ? get_binary_account_balance?.data
+              : 0) + tx_amount
           );
-        await global_helper.set_account_balance(
-          to_address,
-          account_type_uni_from,
-          (get_binary_account_balance?.data
-            ? get_binary_account_balance?.data
-            : 0) + tx_amount
-        );
-        binary_bonus_txs.push(tx_save_binary);
+          binary_bonus_txs.push(tx_save_binary);
+        }
       }
     }
   }
