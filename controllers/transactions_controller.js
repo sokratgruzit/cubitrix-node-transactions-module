@@ -336,6 +336,10 @@ async function send_uni_referral_transaction(
       tx_fee: 0,
       tx_fee_currency: tx.tx_fee_currency,
       tx_currency: tx.tx_currency,
+      tx_options: {
+        referral: user_has_ref_uni.referral,
+        tx_hash: tx_hash,
+      },
     });
     if (tx_save_uni) {
       let get_uni_account_balance = await global_helper.get_account_balance(
@@ -358,7 +362,11 @@ async function check_user_bonus_maximum(address, bonus_type) {
     { $match: { to: address, tx_type: bonus_type } },
     { $group: { _id: null, amount: { $sum: "$amount" } } },
   ]);
-  return tx_amount[0].amount;
+  if (tx_amount.length > 0) {
+    return tx_amount[0].amount;
+  } else {
+    return 0;
+  }
 }
 async function send_binary_referral_transaction(
   user_has_ref_binary,
@@ -409,6 +417,10 @@ async function send_binary_referral_transaction(
           tx_fee: 0,
           tx_fee_currency: tx.tx_fee_currency,
           tx_currency: tx.tx_currency,
+          tx_options: {
+            referral: user_has_ref_binary[i].referral,
+            tx_hash: tx_hash,
+          },
         });
         if (tx_save_binary) {
           let get_binary_account_balance =
