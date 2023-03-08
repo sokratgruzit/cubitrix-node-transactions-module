@@ -339,6 +339,9 @@ async function send_uni_referral_transaction(
       tx_options: {
         referral: user_has_ref_uni.referral,
         tx_hash: tx_hash,
+        referral_module: "uni",
+        lvl: 0,
+        percent: referral_options?.object_value?.referral_uni_percentage,
       },
     });
     if (tx_save_uni) {
@@ -420,6 +423,9 @@ async function send_binary_referral_transaction(
           tx_options: {
             referral: user_has_ref_binary[i].referral,
             tx_hash: tx_hash,
+            referral_module: "binary",
+            lvl: i + 1,
+            percent: level_percent,
           },
         });
         if (tx_save_binary) {
