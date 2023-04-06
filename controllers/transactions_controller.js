@@ -76,6 +76,40 @@ async function deposit_transaction(req, res) {
   }
 }
 
+async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
+  from = from.toLowerCase();
+  amount = parseFloat(amount);
+  let tx_hash_generated = global_helper.make_hash();
+
+  let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+
+  let tx_type_db = await get_tx_type(tx_type);
+  let tx_global_currency = await global_helper.get_option_by_key("global_currency");
+  let tx_fee_currency = tx_global_currency?.data?.value;
+  let tx_wei = tx_type_db?.data?.tx_fee;
+  let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
+
+  let tx_fee = tx_fee_value?.data;
+  let denomination = 0;
+
+  const createdTransaction = await transactions.create({
+    from,
+    to: from,
+    amount,
+    tx_hash,
+    tx_status: "approved",
+    tx_type,
+    denomination,
+    tx_fee,
+    tx_fee_currency,
+    tx_currency,
+  });
+
+  const wtf = await deposit_referral_bonus(createdTransaction, tx_hash);
+
+  return { message: "transaction created", data: createdTransaction, wtf };
+}
+
 // make_transaction
 async function make_transaction(req, res) {
   try {
@@ -532,4 +566,5 @@ module.exports = {
   make_transaction,
   update_transaction_status,
   deposit_transaction,
+  create_deposit_transaction,
 };

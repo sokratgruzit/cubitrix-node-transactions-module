@@ -1,8 +1,8 @@
 const transactions = require("./routes/transactions");
-const deposit_transaction =
-  require("./controllers/transactions_controller").make_transaction;
+const create_deposit_transaction =
+  require("./controllers/transactions_controller").create_deposit_transaction;
 
 module.exports = {
   transactions: transactions,
-  deposit_transaction,
+  create_deposit_transaction,
 };
