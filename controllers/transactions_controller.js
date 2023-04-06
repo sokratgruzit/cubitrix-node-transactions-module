@@ -10,6 +10,72 @@ const {
 } = require("@cubitrix/models");
 // var Web3 = require("web3");
 
+async function deposit_transaction(req, res) {
+  try {
+    //doesnt increase amount just creates log in transaction history and distributes referral bonus
+    let { from, amount, tx_currency, tx_type } = req.body;
+    if (!from) return res.status(400).json(main_helper.error_message("from is required"));
+    from = from.toLowerCase();
+    amount = parseFloat(amount);
+    let tx_hash_generated = global_helper.make_hash();
+
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+
+    let tx_type_db = await get_tx_type(tx_type);
+    let tx_global_currency = await global_helper.get_option_by_key("global_currency");
+    let tx_fee_currency = tx_global_currency?.data?.value;
+    let tx_wei = tx_type_db?.data?.tx_fee;
+    let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
+
+    let tx_fee = tx_fee_value?.data;
+    let denomination = 0;
+
+    if (!(tx_type_db.success && tx_global_currency.success)) {
+      return main_helper.error_response(
+        res,
+        "such kind of transaction type is not defined.",
+      );
+    }
+
+    if (!tx_fee_currency && !tx_wei) {
+      return main_helper.error_response(res, { message: "fee currency is not defined" });
+    }
+    if (!tx_fee_value.success) {
+      return main_helper.error_response(res, { message: tx_fee_value.message });
+    }
+
+    let account = await accounts.findOne({ address: from });
+
+    if (!account) {
+      return main_helper.error_response(res, {
+        message: "Account with this address doesn't exist",
+      });
+    }
+
+    const createdTransaction = await transactions.create({
+      from,
+      to: from,
+      amount,
+      tx_hash,
+      tx_status: "approved",
+      tx_type,
+      denomination,
+      tx_fee,
+      tx_fee_currency,
+      tx_currency,
+    });
+
+    const wtf = await deposit_referral_bonus(createdTransaction, tx_hash);
+
+    return res
+      .status(200)
+      .json({ message: "transaction created", data: createdTransaction, wtf });
+  } catch (e) {
+    console.log(e.message);
+    res.status(500).send({ success: false, message: "something went wrong" });
+  }
+}
+
 // make_transaction
 async function make_transaction(req, res) {
   try {
@@ -48,9 +114,11 @@ async function make_transaction(req, res) {
           return main_helper.error_response(res, "please provide all necessary values");
         }
         let account = await accounts.findOne({
-          address: to,
+          account_owner: to,
         });
+        console.log(from, to);
         from = account.account_owner;
+
         if (!from || account.active === false) {
           return main_helper.error_response(res, "Cannot deposit to this account");
         }
@@ -103,17 +171,53 @@ async function make_transaction(req, res) {
       to,
       amount,
       tx_hash,
-      tx_status: "pending",
+      tx_status: "approved",
       tx_type,
       denomination,
       tx_fee,
       tx_fee_currency,
       tx_currency,
     });
-    if (tx_save) {
-      return main_helper.success_response(res, tx_save);
+
+    // if (tx_save.tx_type == "deposit") {
+    //   referral_resp = await deposit_referral_bonus(tx, tx_save.tx_hash);
+    // }
+    // return main_helper.success_response(res, {
+    //   message: "Transaction approved",
+    //   referral_resp,
+    // });
+
+    // if (tx.tx_status == "pending") {
+    // if (
+    //   !get_from_account_balance.success ||
+    //   get_from_account_balance.data == null ||
+    //   get_from_account_balance.data < tx.amount + parseFloat(tx.tx_fee)
+    // ) {
+    //   return main_helper.error_response(
+    //     res,
+    //     "there is no sufficient amount on your balance",
+    //   );
+    // }
+    // let get_from_account_balance_value = parseFloat(get_from_account_balance?.data);
+    // let get_to_account_balance_value = parseFloat(get_to_account_balance?.data);
+    // await global_helper.set_account_balance(
+    //   tx.from,
+    //   account_type_from,
+    //   get_from_account_balance_value - (tx.amount + parseFloat(tx.tx_fee)),
+    // );
+    // await global_helper.set_account_balance(
+    //   tx.to,
+    //   account_type_to,
+    //   (get_to_account_balance_value ? get_to_account_balance_value : 0) + tx.amount,
+    // );
+    // }
+    if (!tx_save) {
+      return main_helper.error_response(res, { message: "error saving transaction" });
     }
-    return main_helper.error_response(res, "error saving transaction");
+    return main_helper.success_response(res, {
+      message: "successfull transaction",
+      data: tx_save,
+    });
   } catch (e) {
     console.log(e.message);
     return main_helper.error_response(res, "error saving transaction");
@@ -126,7 +230,7 @@ async function update_transaction_status(req, res) {
 
     // return main_helper.success_response(
     //   res,
-    //   await deposit_referral_bonus(tx, tx_hash)
+    //   await deposit_referral_bonus(tx, tx_hash)pending
     // );
 
     let account_type_from = await global_helper.get_type_by_address(tx.from);
@@ -207,6 +311,7 @@ async function update_transaction_status(req, res) {
     return main_helper.error_response(res, "error");
   }
 }
+
 async function deposit_referral_bonus(tx, tx_hash) {
   let referral_options = await global_helper.get_option_by_key("referral_options");
   referral_options = referral_options?.data;
@@ -248,6 +353,9 @@ async function deposit_referral_bonus(tx, tx_hash) {
     let user_has_ref_binary = await referral_binary_users.find({
       user_id,
     });
+
+    console.log(user_has_ref_binary, user_id);
+
     if (user_has_ref_binary.length > 0) {
       let binary_tx = await send_binary_referral_transaction(
         user_has_ref_binary,
@@ -423,4 +531,5 @@ async function get_tx_type(tx_type) {
 module.exports = {
   make_transaction,
   update_transaction_status,
+  deposit_transaction,
 };

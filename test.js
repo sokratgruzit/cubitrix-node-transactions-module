@@ -8,6 +8,7 @@ const app = express();
 app.use(express.json({ extended: true }));
 app.use(cors(cors_options));
 app.use("/api/transactions", transactions);
+
 // console.log(accounts.index("jinx1"));
 // app.use('/accounts', router)
 
@@ -41,9 +42,7 @@ async function start() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    app.listen(PORT, () =>
-      console.log(`App has been started on port ${PORT}...`)
-    );
+    app.listen(PORT, () => console.log(`App has been started on port ${PORT}...`));
   } catch (e) {
     console.log(`Server Error ${e.message}`);
     process.exit(1);
