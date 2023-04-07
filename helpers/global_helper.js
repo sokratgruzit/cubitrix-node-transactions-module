@@ -63,7 +63,9 @@ async function set_account_balance(address, account_type_id, balance) {
   try {
     let balance_update = await accounts.findOneAndUpdate(
       { address, account_type_id },
-      { address, account_type_id, balance }
+      { address, account_type_id, balance },
+      // { account_owner: address, account_type_id , account_category: 'system'},
+      // { balance }
     );
     if (balance_update) {
       return main_helper.success_message("balance updated");
@@ -114,8 +116,7 @@ async function get_type_by_name(address) {
 }
 function make_hash(length = 66) {
   let result = "";
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const charactersLength = characters.length;
   let counter = 0;
   while (counter < length) {
@@ -127,9 +128,7 @@ function make_hash(length = 66) {
 // get account type by name
 async function get_account_by_address(address) {
   try {
-    let account_address = await account_meta
-      .findOne({ address: address })
-      .exec();
+    let account_address = await account_meta.findOne({ address: address }).exec();
 
     if (account_address) {
       let type_id = account_address._id;

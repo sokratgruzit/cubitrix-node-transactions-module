@@ -388,8 +388,6 @@ async function deposit_referral_bonus(tx, tx_hash) {
       user_id,
     });
 
-    console.log(user_has_ref_binary, user_id);
-
     if (user_has_ref_binary.length > 0) {
       let binary_tx = await send_binary_referral_transaction(
         user_has_ref_binary,
