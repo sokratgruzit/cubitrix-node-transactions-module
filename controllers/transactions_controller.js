@@ -105,8 +105,6 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
     tx_currency,
   });
 
-  console.log("new hurrray");
-
   const wtf = await deposit_referral_bonus(createdTransaction, tx_hash);
 
   return { message: "transaction created", data: createdTransaction, wtf };
@@ -152,7 +150,6 @@ async function make_transaction(req, res) {
         let account = await accounts.findOne({
           account_owner: to,
         });
-        console.log(from, to);
         from = account.account_owner;
 
         if (!from || account.active === false) {
@@ -453,16 +450,10 @@ async function send_uni_referral_transaction(
       },
     });
     if (tx_save_uni) {
-      let get_uni_account_balance = await global_helper.get_account_balance(
-        to_address,
-        account_type_uni_from,
+      await accounts.findOneAndUpdate(
+        { account_owner: to_address, account_category: "system" },
+        { $inc: { balance: tx_amount } },
       );
-      await global_helper.set_account_balance(
-        to_address,
-        account_type_uni_from,
-        (get_uni_account_balance?.data ? get_uni_account_balance?.data : 0) + tx_amount,
-      );
-      return tx_save_uni;
     }
   }
   return false;
@@ -533,15 +524,9 @@ async function send_binary_referral_transaction(
           },
         });
         if (tx_save_binary) {
-          let get_binary_account_balance = await global_helper.get_account_balance(
-            to_address,
-            account_type_uni_from,
-          );
-          await global_helper.set_account_balance(
-            to_address,
-            account_type_uni_from,
-            (get_binary_account_balance?.data ? get_binary_account_balance?.data : 0) +
-              tx_amount,
+          await accounts.findOneAndUpdate(
+            { account_owner: to_address, account_category: "system" },
+            { $inc: { balance: tx_amount } },
           );
           binary_bonus_txs.push(tx_save_binary);
         }
