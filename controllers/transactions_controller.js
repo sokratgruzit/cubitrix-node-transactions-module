@@ -105,6 +105,8 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
     tx_currency,
   });
 
+  console.log("new hurrray");
+
   const wtf = await deposit_referral_bonus(createdTransaction, tx_hash);
 
   return { message: "transaction created", data: createdTransaction, wtf };

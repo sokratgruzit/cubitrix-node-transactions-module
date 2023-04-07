@@ -62,10 +62,10 @@ async function get_account_balance(address, account_type_id) {
 async function set_account_balance(address, account_type_id, balance) {
   try {
     let balance_update = await accounts.findOneAndUpdate(
-      { address, account_type_id },
-      { address, account_type_id, balance },
-      // { account_owner: address, account_type_id , account_category: 'system'},
-      // { balance }
+      // { address, account_type_id },
+      // { address, account_type_id, balance },
+      { account_owner: address, account_type_id, account_category: "system" },
+      { balance },
     );
     if (balance_update) {
       return main_helper.success_message("balance updated");
