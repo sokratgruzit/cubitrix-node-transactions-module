@@ -658,7 +658,7 @@ async function internal_transfer_transaction(req, res) {
     });
 
     const toAccount = await accounts.findOne({
-      account_owner: to,
+      account_owner: from,
       account_category: receiver_account_type,
     });
 
