@@ -12,7 +12,5 @@ router.post(
 );
 
 router.post("/deposit_transaction", transactions_controller.deposit_transaction);
-router.post("/internal_transfer_transaction", transactions_controller.internal_transfer_transaction);
-
 
 module.exports = router;
