@@ -639,6 +639,5 @@ module.exports = {
   update_transaction_status,
   deposit_transaction,
   create_deposit_transaction,
-  internal_transfer_transaction,
   update_options,
 };
