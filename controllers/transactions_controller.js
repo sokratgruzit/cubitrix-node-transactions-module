@@ -7,6 +7,7 @@ const {
   referral_links,
   referral_uni_users,
   referral_binary_users,
+  options,
 } = require("@cubitrix/models");
 // var Web3 = require("web3");
 
@@ -611,6 +612,27 @@ async function get_tx_type(tx_type) {
   }
 }
 
+async function update_options(req, res) {
+  try {
+    const { type, object_value, value } = req.body;
+
+    let key = await global_helper.get_option_by_key(type);
+
+    if (!key) {
+      return main_helper.error_message("key not found");
+    }
+
+    if (object_value) update_extensions_options;
+    await options.findOneAndUpdate({ key: type }, { object_value });
+
+    if (value) await options.findOneAndUpdate({ key: type }, { value });
+
+    return main_helper.return_data(true, "options updated");
+  } catch (e) {
+    console.log(e.message);
+    return main_helper.error_message("error");
+  }
+}
 
 module.exports = {
   make_transaction,
@@ -618,4 +640,5 @@ module.exports = {
   deposit_transaction,
   create_deposit_transaction,
   internal_transfer_transaction,
+  update_options,
 };
