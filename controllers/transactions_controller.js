@@ -618,9 +618,10 @@ async function create_global_option(req, res) {
 
     let key = await global_helper.get_option_by_key(type);
 
-    if (key) {
-      return main_helper.error_message(
-        "global option by that key already exists"
+    if (key.data) {
+      return main_helper.error_response(
+        res,
+        main_helper.error_message("global option by that key already exists")
       );
     }
 
@@ -642,7 +643,7 @@ async function create_global_option(req, res) {
     });
   } catch (e) {
     console.log(e.message);
-    return main_helper.error_message("error");
+    return main_helper.error_response(res, "error creating global option");
   }
 }
 
@@ -652,7 +653,7 @@ async function update_options(req, res) {
 
     let key = await global_helper.get_option_by_key(type);
 
-    if (!key) {
+    if (!key.data) {
       return main_helper.error_message("key not found");
     }
 
@@ -672,15 +673,13 @@ async function update_options(req, res) {
       { new: true }
     );
 
-    console.log(result);
-
     return res.status(200).json({
       message: "option updated",
       data: result,
     });
   } catch (e) {
     console.log(e.message);
-    return main_helper.error_message("error");
+    return main_helper.error_response(res, "error updating global option");
   }
 }
 
