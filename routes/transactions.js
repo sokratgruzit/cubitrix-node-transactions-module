@@ -16,6 +16,11 @@ router.post(
   transactions_controller.deposit_transaction
 );
 
+router.post(
+  "/create_global_option",
+  transactions_controller.create_global_option
+);
+
 router.post("/update_options", transactions_controller.update_options);
 
 module.exports = router;

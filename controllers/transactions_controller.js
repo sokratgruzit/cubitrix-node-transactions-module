@@ -612,6 +612,30 @@ async function get_tx_type(tx_type) {
   }
 }
 
+async function create_global_option(req, res) {
+  try {
+    const { type, object_value, value } = req.body;
+
+    let key = await global_helper.get_option_by_key(type);
+
+    if (key) {
+      return main_helper.error_message(
+        "global option by that key already exists"
+      );
+    }
+
+    const result = await options.create({ key: type, value, object_value });
+
+    return res.status(200).json({
+      message: "global option created successfully",
+      data: result,
+    });
+  } catch (e) {
+    console.log(e.message);
+    return main_helper.error_message("error");
+  }
+}
+
 async function update_options(req, res) {
   try {
     const { type, object_value, value } = req.body;
@@ -622,12 +646,36 @@ async function update_options(req, res) {
       return main_helper.error_message("key not found");
     }
 
-    if (object_value) update_extensions_options;
-    await options.findOneAndUpdate({ key: type }, { object_value });
+    let result;
 
-    if (value) await options.findOneAndUpdate({ key: type }, { value });
+    if (value && object_value) {
+      result = await options.findOneAndUpdate(
+        { key: type },
+        { $set: { value, object_value } },
+        { new: true }
+      );
+    }
 
-    return main_helper.return_data(true, "options updated");
+    if (object_value && !value) {
+      result = await options.findOneAndUpdate(
+        { key: type },
+        { $set: { object_value } },
+        { new: true }
+      );
+    }
+
+    if (value && !object_value) {
+      result = await options.findOneAndUpdate(
+        { key: type },
+        { $set: { value } },
+        { new: true }
+      );
+    }
+
+    return res.status(200).json({
+      message: "option updated",
+      data: result,
+    });
   } catch (e) {
     console.log(e.message);
     return main_helper.error_message("error");
@@ -639,5 +687,6 @@ module.exports = {
   update_transaction_status,
   deposit_transaction,
   create_deposit_transaction,
+  create_global_option,
   update_options,
 };
