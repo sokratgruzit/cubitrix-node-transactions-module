@@ -637,6 +637,7 @@ async function create_global_option(req, res) {
 }
 
 async function update_options(req, res) {
+  console.log("hi");
   try {
     const { type, object_value, value } = req.body;
 
@@ -671,6 +672,8 @@ async function update_options(req, res) {
         { new: true }
       );
     }
+
+    console.log(result);
 
     return res.status(200).json({
       message: "option updated",
