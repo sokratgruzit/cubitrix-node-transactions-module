@@ -624,7 +624,17 @@ async function create_global_option(req, res) {
       );
     }
 
-    const result = await options.create({ key: type, value, object_value });
+    let optionData = {};
+
+    if (value) {
+      optionData.value = value;
+    }
+
+    if (object_value) {
+      optionData.object_value = object_value;
+    }
+
+    const result = await options.create({ key: type, ...optionData });
 
     return res.status(200).json({
       message: "global option created successfully",
@@ -637,7 +647,6 @@ async function create_global_option(req, res) {
 }
 
 async function update_options(req, res) {
-  console.log("hi");
   try {
     const { type, object_value, value } = req.body;
 
@@ -647,31 +656,21 @@ async function update_options(req, res) {
       return main_helper.error_message("key not found");
     }
 
-    let result;
+    let updateObj = {};
 
-    if (value && object_value) {
-      result = await options.findOneAndUpdate(
-        { key: type },
-        { $set: { value, object_value } },
-        { new: true }
-      );
+    if (value !== undefined) {
+      updateObj.value = value;
     }
 
-    if (object_value && !value) {
-      result = await options.findOneAndUpdate(
-        { key: type },
-        { $set: { object_value } },
-        { new: true }
-      );
+    if (object_value !== undefined) {
+      updateObj.object_value = object_value;
     }
 
-    if (value && !object_value) {
-      result = await options.findOneAndUpdate(
-        { key: type },
-        { $set: { value } },
-        { new: true }
-      );
-    }
+    let result = await options.findOneAndUpdate(
+      { key: type },
+      { $set: updateObj },
+      { new: true }
+    );
 
     console.log(result);
 
