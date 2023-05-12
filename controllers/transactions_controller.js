@@ -305,7 +305,7 @@ async function make_transaction(req, res) {
 async function submit_transaction(req, res) {
   try {
     let { from, to, amount, tx_currency } = req.body;
-    if (!from && !to && !amount && !tx_type && !tx_currency) {
+    if (!from && !to && !amount && !tx_currency) {
       return main_helper.error_response(
         res,
         "please provide all necessary values"
@@ -313,7 +313,7 @@ async function submit_transaction(req, res) {
     }
 
     from = from.toLowerCase();
-    if (to) to = to.toLowerCase();
+    to = to.toLowerCase();
     amount = parseFloat(amount);
 
     let account_from = await accounts.findOne({
@@ -438,9 +438,7 @@ async function update_transaction_status(req, res) {
       tx.from
     );
     let referral_resp;
-    let get_to_account_balance = await global_helper.get_account_balance(
-      tx.to
-    );
+    let get_to_account_balance = await global_helper.get_account_balance(tx.to);
 
     if (status == "approve") {
       if (tx.tx_status == "pending") {
