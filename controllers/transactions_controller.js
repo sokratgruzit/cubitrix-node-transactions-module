@@ -280,12 +280,10 @@ async function make_transaction(req, res) {
     // let get_to_account_balance_value = parseFloat(get_to_account_balance?.data);
     // await global_helper.set_account_balance(
     //   tx.from,
-    //   account_type_from,
     //   get_from_account_balance_value - (tx.amount + parseFloat(tx.tx_fee)),
     // );
     // await global_helper.set_account_balance(
     //   tx.to,
-    //   account_type_to,
     //   (get_to_account_balance_value ? get_to_account_balance_value : 0) + tx.amount,
     // );
     // }
@@ -437,13 +435,11 @@ async function update_transaction_status(req, res) {
     let account_type_from = await global_helper.get_type_by_address(tx.from);
     let account_type_to = await global_helper.get_type_by_address(tx.to);
     let get_from_account_balance = await global_helper.get_account_balance(
-      tx.from,
-      account_type_from
+      tx.from
     );
     let referral_resp;
     let get_to_account_balance = await global_helper.get_account_balance(
-      tx.to,
-      account_type_to
+      tx.to
     );
 
     if (status == "approve") {
@@ -466,12 +462,10 @@ async function update_transaction_status(req, res) {
         );
         await global_helper.set_account_balance(
           tx.from,
-          account_type_from,
           get_from_account_balance_value - (tx.amount + parseFloat(tx.tx_fee))
         );
         await global_helper.set_account_balance(
           tx.to,
-          account_type_to,
           (get_to_account_balance_value ? get_to_account_balance_value : 0) +
             tx.amount
         );
