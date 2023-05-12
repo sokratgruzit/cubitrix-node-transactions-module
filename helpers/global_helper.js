@@ -61,8 +61,8 @@ async function get_account_balance(address) {
 async function set_account_balance(address, balance) {
   try {
     let balance_update = await accounts.findOneAndUpdate(
-      { address },
-      { $inc: { balance } },
+      { address: address },
+      { $inc: { balance: parseFloat(balance) } },
       { new: true }
     );
     if (balance_update) {

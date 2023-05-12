@@ -386,6 +386,23 @@ async function submit_transaction(req, res) {
       );
     }
 
+    const fromBalanceUpdated = await global_helper.set_account_balance(
+      from,
+      -total_amount_necessary
+    );
+
+    const toBalanceUpdated = await global_helper.set_account_balance(
+      to,
+      amount
+    );
+
+    if (!fromBalanceUpdated.success || !toBalanceUpdated.success) {
+      return main_helper.error_response(
+        res,
+        "balance update failed, please try again later"
+      );
+    }
+
     let tx_save = await transactions.create({
       from,
       to,
@@ -404,15 +421,6 @@ async function submit_transaction(req, res) {
         message: "error saving transaction",
       });
     }
-
-    await global_helper.set_account_balance({
-      address: from,
-      balance: -(amount + tx_fee),
-    });
-    await global_helper.set_account_balance({
-      address: to,
-      balance: amount,
-    });
 
     return main_helper.success_response(res, {
       message: "successful transaction",
