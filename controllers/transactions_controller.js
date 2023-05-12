@@ -335,29 +335,9 @@ async function submit_transaction(req, res) {
       return main_helper.error_response(res, "Both accounts must be active");
     }
 
-    const account_from_balance = await global_helper.get_account_balance({
+    const { balance: account_from_balance } = await accounts.findOne({
       address: from,
     });
-
-    let tx_global_currency = await global_helper.get_option_by_key(
-      "global_currency"
-    );
-    let tx_fee_currency = tx_global_currency?.data?.value;
-    let tx_wei = tx_type_db?.data?.tx_fee;
-    let tx_fee_value = await global_helper.calculate_tx_fee(
-      tx_wei,
-      tx_fee_currency
-    );
-    let tx_fee = tx_fee_value.data;
-
-    let total_amount_necessary = amount + tx_fee;
-
-    if (!account_from_balance.data < total_amount_necessary) {
-      return main_helper.error_response(
-        res,
-        "there is no sufficient amount on your balance"
-      );
-    }
 
     let tx_type;
 
@@ -384,7 +364,27 @@ async function submit_transaction(req, res) {
         "such kind of transaction type is not defined."
       );
     }
+
+    let tx_global_currency = await global_helper.get_option_by_key(
+      "global_currency"
+    );
+    let tx_fee_currency = tx_global_currency?.data?.value;
+    let tx_wei = tx_type_db?.data?.tx_fee;
+    let tx_fee_value = await global_helper.calculate_tx_fee(
+      tx_wei,
+      tx_fee_currency
+    );
+    let tx_fee = parseFloat(tx_fee_value.data);
     let denomination = 0;
+
+    let total_amount_necessary = amount + tx_fee;
+
+    if (!(account_from_balance >= total_amount_necessary)) {
+      return main_helper.error_response(
+        res,
+        "there is no sufficient amount on your balance"
+      );
+    }
 
     let tx_save = await transactions.create({
       from,
@@ -407,10 +407,10 @@ async function submit_transaction(req, res) {
 
     await global_helper.set_account_balance({
       address: from,
-      balance: -(amount + parseFloat(tx_fee)),
+      balance: -(amount + tx_fee),
     });
     await global_helper.set_account_balance({
-      address: from,
+      address: to,
       balance: amount,
     });
 
