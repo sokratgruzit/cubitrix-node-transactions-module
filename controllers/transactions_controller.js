@@ -339,7 +339,20 @@ async function submit_transaction(req, res) {
       address: from,
     });
 
-    if (!account_from_balance.data < amount) {
+    let tx_global_currency = await global_helper.get_option_by_key(
+      "global_currency"
+    );
+    let tx_fee_currency = tx_global_currency?.data?.value;
+    let tx_wei = tx_type_db?.data?.tx_fee;
+    let tx_fee_value = await global_helper.calculate_tx_fee(
+      tx_wei,
+      tx_fee_currency
+    );
+    let tx_fee = tx_fee_value.data;
+
+    let total_amount_necessary = amount + tx_fee;
+
+    if (!account_from_balance.data < total_amount_necessary) {
       return main_helper.error_response(
         res,
         "there is no sufficient amount on your balance"
@@ -371,17 +384,6 @@ async function submit_transaction(req, res) {
         "such kind of transaction type is not defined."
       );
     }
-
-    let tx_global_currency = await global_helper.get_option_by_key(
-      "global_currency"
-    );
-    let tx_fee_currency = tx_global_currency?.data?.value;
-    let tx_wei = tx_type_db?.data?.tx_fee;
-    let tx_fee_value = await global_helper.calculate_tx_fee(
-      tx_wei,
-      tx_fee_currency
-    );
-    let tx_fee = tx_fee_value.data;
     let denomination = 0;
 
     let tx_save = await transactions.create({
