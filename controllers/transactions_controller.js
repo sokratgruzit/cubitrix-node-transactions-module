@@ -304,6 +304,126 @@ async function make_transaction(req, res) {
   }
 }
 
+async function submit_transaction(req, res) {
+  try {
+    let { from, to, amount, tx_currency } = req.body;
+    if (!from && !to && !amount && !tx_type && !tx_currency) {
+      return main_helper.error_response(
+        res,
+        "please provide all necessary values"
+      );
+    }
+
+    from = from.toLowerCase();
+    if (to) to = to.toLowerCase();
+    amount = parseFloat(amount);
+
+    let account_from = await accounts.findOne({
+      address: from,
+    });
+
+    let account_to = await accounts.findOne({
+      address: to,
+    });
+
+    if (!account_from || !account_to) {
+      return main_helper.error_response(
+        res,
+        "Can't find account with this address"
+      );
+    }
+
+    if (!account_from.active || !account_to.active) {
+      return main_helper.error_response(res, "Both accounts must be active");
+    }
+
+    const account_from_balance = await global_helper.get_account_balance({
+      address: from,
+    });
+
+    if (!account_from_balance.data < amount) {
+      return main_helper.error_response(
+        res,
+        "there is no sufficient amount on your balance"
+      );
+    }
+
+    let tx_type;
+
+    if (account_to.account_category === "external") {
+      tx_type = "withdraw";
+    } else if (
+      account_from.account_owner === account_to.account_owner ||
+      account_from.address === account_to.account_owner
+    ) {
+      tx_type = "internal_transfer";
+    } else if (account_to.address === account_from.address) {
+      tx_type = "deposit";
+    } else {
+      tx_type = "transfer";
+    }
+
+    let tx_hash_generated = global_helper.make_hash();
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+    let tx_type_db = await get_tx_type(tx_type);
+
+    if (!tx_type_db.success) {
+      return main_helper.error_response(
+        res,
+        "such kind of transaction type is not defined."
+      );
+    }
+
+    let tx_global_currency = await global_helper.get_option_by_key(
+      "global_currency"
+    );
+    let tx_fee_currency = tx_global_currency?.data?.value;
+    let tx_wei = tx_type_db?.data?.tx_fee;
+    let tx_fee_value = await global_helper.calculate_tx_fee(
+      tx_wei,
+      tx_fee_currency
+    );
+    let tx_fee = tx_fee_value.data;
+    let denomination = 0;
+
+    let tx_save = await transactions.create({
+      from,
+      to,
+      amount,
+      tx_hash,
+      tx_status: "approved",
+      tx_type,
+      denomination,
+      tx_fee,
+      tx_fee_currency,
+      tx_currency,
+    });
+
+    if (!tx_save) {
+      return main_helper.error_response(res, {
+        message: "error saving transaction",
+      });
+    }
+
+    await global_helper.set_account_balance({
+      address: from,
+      balance: -(amount + parseFloat(tx_fee)),
+    });
+    await global_helper.set_account_balance({
+      address: from,
+      balance: amount,
+    });
+
+    return main_helper.success_response(res, {
+      message: "successful transaction",
+      data: tx_save,
+    });
+  } catch (e) {
+    console.log(e.message);
+    return main_helper.error_response(res, "error submitting transaction");
+  }
+}
+
 async function update_transaction_status(req, res) {
   try {
     let { tx_hash, status } = req.body;
@@ -690,4 +810,5 @@ module.exports = {
   create_deposit_transaction,
   create_global_option,
   update_options,
+  submit_transaction,
 };

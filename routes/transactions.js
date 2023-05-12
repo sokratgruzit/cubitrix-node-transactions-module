@@ -23,4 +23,6 @@ router.post(
 
 router.post("/update_options", transactions_controller.update_options);
 
+router.post("/submit_transaction", transactions_controller.submit_transaction);
+
 module.exports = router;
