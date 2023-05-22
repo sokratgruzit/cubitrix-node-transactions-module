@@ -547,9 +547,21 @@ async function get_tx_type(tx_type) {
     return main_helper.error_message("error");
   }
 }
+
+async function pending_deposit_transaction(req, res) {
+  try {
+    let { from, amount, tx_currency, tx_type } = req.body;
+
+    console.log(from, amount, "aahaha");
+    res.status(200).send({ success: true, message: "success" });
+  } catch (e) {
+    return res.status(500).send({ success: false, message: "something went wrong" });
+  }
+}
 module.exports = {
   make_transaction,
   update_transaction_status,
   deposit_transaction,
   create_deposit_transaction,
+  pending_deposit_transaction,
 };
