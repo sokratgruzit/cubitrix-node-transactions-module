@@ -8,6 +8,7 @@ const {
   referral_uni_users,
   referral_binary_users,
   deposit_requests,
+  options,
 } = require("@cubitrix/models");
 
 const axios = require("axios");
@@ -41,7 +42,9 @@ async function deposit_transaction(req, res) {
     }
 
     if (!tx_fee_currency && !tx_wei) {
-      return main_helper.error_response(res, { message: "fee currency is not defined" });
+      return main_helper.error_response(res, {
+        message: "fee currency is not defined",
+      });
     }
     if (!tx_fee_value.success) {
       return main_helper.error_response(res, { message: tx_fee_value.message });
@@ -68,11 +71,13 @@ async function deposit_transaction(req, res) {
       tx_currency,
     });
 
-    const wtf = await deposit_referral_bonus(createdTransaction, tx_hash);
+    const bonus = await deposit_referral_bonus(createdTransaction, tx_hash);
 
-    return res
-      .status(200)
-      .json({ message: "transaction created", data: createdTransaction, wtf });
+    return res.status(200).json({
+      message: "transaction created",
+      data: createdTransaction,
+      bonus,
+    });
   } catch (e) {
     console.log(e.message);
     res.status(500).send({ success: false, message: "something went wrong" });
@@ -238,17 +243,17 @@ async function make_transaction(req, res) {
     // let get_to_account_balance_value = parseFloat(get_to_account_balance?.data);
     // await global_helper.set_account_balance(
     //   tx.from,
-    //   account_type_from,
     //   get_from_account_balance_value - (tx.amount + parseFloat(tx.tx_fee)),
     // );
     // await global_helper.set_account_balance(
     //   tx.to,
-    //   account_type_to,
     //   (get_to_account_balance_value ? get_to_account_balance_value : 0) + tx.amount,
     // );
     // }
     if (!tx_save) {
-      return main_helper.error_response(res, { message: "error saving transaction" });
+      return main_helper.error_response(res, {
+        message: "error saving transaction",
+      });
     }
     return main_helper.success_response(res, {
       message: "successfull transaction",
@@ -259,6 +264,123 @@ async function make_transaction(req, res) {
     return main_helper.error_response(res, "error saving transaction");
   }
 }
+
+async function submit_transaction(req, res) {
+  try {
+    let { from, to, amount, tx_currency } = req.body;
+    if (!from && !to && !amount && !tx_currency) {
+      return main_helper.error_response(res, "please provide all necessary values");
+    }
+
+    from = from.toLowerCase();
+    to = to.toLowerCase();
+    amount = parseFloat(amount);
+
+    let account_from = await accounts.findOne({
+      address: from,
+    });
+
+    let account_to = await accounts.findOne({
+      address: to,
+    });
+
+    if (!account_from || !account_to) {
+      return main_helper.error_response(res, "Can't find account with this address");
+    }
+
+    if (!account_from.active || !account_to.active) {
+      return main_helper.error_response(res, "Both accounts must be active");
+    }
+
+    const { balance: account_from_balance } = await accounts.findOne({
+      address: from,
+    });
+
+    let tx_type;
+
+    if (account_to.account_category === "external") {
+      tx_type = "withdraw";
+    } else if (
+      account_from.account_owner === account_to.account_owner ||
+      account_from.address === account_to.account_owner
+    ) {
+      tx_type = "internal_transfer";
+    } else if (account_to.address === account_from.address) {
+      tx_type = "deposit";
+    } else {
+      tx_type = "transfer";
+    }
+
+    let tx_hash_generated = global_helper.make_hash();
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+    let tx_type_db = await get_tx_type(tx_type);
+
+    if (!tx_type_db.success) {
+      return main_helper.error_response(
+        res,
+        "such kind of transaction type is not defined.",
+      );
+    }
+
+    let tx_global_currency = await global_helper.get_option_by_key("global_currency");
+    let tx_fee_currency = tx_global_currency?.data?.value;
+    let tx_wei = tx_type_db?.data?.tx_fee;
+    let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
+    let tx_fee = parseFloat(tx_fee_value.data);
+    let denomination = 0;
+
+    let total_amount_necessary = amount + tx_fee;
+
+    if (!(account_from_balance >= total_amount_necessary)) {
+      return main_helper.error_response(
+        res,
+        "there is no sufficient amount on your balance",
+      );
+    }
+
+    const fromBalanceUpdated = await global_helper.set_account_balance(
+      from,
+      -total_amount_necessary,
+    );
+
+    const toBalanceUpdated = await global_helper.set_account_balance(to, amount);
+
+    if (!fromBalanceUpdated.success || !toBalanceUpdated.success) {
+      return main_helper.error_response(
+        res,
+        "balance update failed, please try again later",
+      );
+    }
+
+    let tx_save = await transactions.create({
+      from,
+      to,
+      amount,
+      tx_hash,
+      tx_status: "approved",
+      tx_type,
+      denomination,
+      tx_fee,
+      tx_fee_currency,
+      tx_currency,
+    });
+
+    if (!tx_save) {
+      return main_helper.error_response(res, {
+        message: "error saving transaction",
+      });
+    }
+
+    return main_helper.success_response(res, {
+      message: "successful transaction",
+      data: tx_save,
+    });
+  } catch (e) {
+    console.log(e.message);
+    return main_helper.error_response(res, "error submitting transaction");
+  }
+}
+
 async function update_transaction_status(req, res) {
   try {
     let { tx_hash, status } = req.body;
@@ -271,15 +393,9 @@ async function update_transaction_status(req, res) {
 
     let account_type_from = await global_helper.get_type_by_address(tx.from);
     let account_type_to = await global_helper.get_type_by_address(tx.to);
-    let get_from_account_balance = await global_helper.get_account_balance(
-      tx.from,
-      account_type_from,
-    );
+    let get_from_account_balance = await global_helper.get_account_balance(tx.from);
     let referral_resp;
-    let get_to_account_balance = await global_helper.get_account_balance(
-      tx.to,
-      account_type_to,
-    );
+    let get_to_account_balance = await global_helper.get_account_balance(tx.to);
 
     if (status == "approve") {
       if (tx.tx_status == "pending") {
@@ -297,12 +413,10 @@ async function update_transaction_status(req, res) {
         let get_to_account_balance_value = parseFloat(get_to_account_balance?.data);
         await global_helper.set_account_balance(
           tx.from,
-          account_type_from,
           get_from_account_balance_value - (tx.amount + parseFloat(tx.tx_fee)),
         );
         await global_helper.set_account_balance(
           tx.to,
-          account_type_to,
           (get_to_account_balance_value ? get_to_account_balance_value : 0) + tx.amount,
         );
         let tx_updated = await transactions.findOneAndUpdate(
@@ -407,6 +521,7 @@ async function deposit_referral_bonus(tx, tx_hash) {
 
   return resp_data;
 }
+
 async function send_uni_referral_transaction(
   user_has_ref_uni,
   referral_options,
@@ -461,6 +576,7 @@ async function send_uni_referral_transaction(
   }
   return false;
 }
+
 async function check_user_bonus_maximum(address, bonus_type) {
   let tx_amount = await transactions.aggregate([
     { $match: { to: address, tx_type: bonus_type } },
@@ -472,6 +588,7 @@ async function check_user_bonus_maximum(address, bonus_type) {
     return 0;
   }
 }
+
 async function send_binary_referral_transaction(
   user_has_ref_binary,
   referral_options,
@@ -538,6 +655,7 @@ async function send_binary_referral_transaction(
   }
   return binary_bonus_txs;
 }
+
 async function get_tx_type(tx_type) {
   try {
     let type = await transaction_types.findOne({ name: tx_type }).exec();
@@ -628,6 +746,76 @@ async function coinbase_deposit_transaction(req, res) {
     res.status(500).send({ success: false, message: "something went wrong" });
   }
 }
+async function create_global_option(req, res) {
+  try {
+    const { type, object_value, value } = req.body;
+
+    let key = await global_helper.get_option_by_key(type);
+
+    if (key.data) {
+      return main_helper.error_response(
+        res,
+        main_helper.error_message("global option by that key already exists"),
+      );
+    }
+
+    let optionData = {};
+
+    if (value) {
+      optionData.value = value;
+    }
+
+    if (object_value) {
+      optionData.object_value = object_value;
+    }
+
+    const result = await options.create({ key: type, ...optionData });
+
+    return res.status(200).json({
+      message: "global option created successfully",
+      data: result,
+    });
+  } catch (e) {
+    console.log(e.message);
+    return main_helper.error_response(res, "error creating global option");
+  }
+}
+
+async function update_options(req, res) {
+  try {
+    const { type, object_value, value } = req.body;
+
+    let key = await global_helper.get_option_by_key(type);
+
+    if (!key.data) {
+      return main_helper.error_message("key not found");
+    }
+
+    let updateObj = {};
+
+    if (value !== undefined) {
+      updateObj.value = value;
+    }
+
+    if (object_value !== undefined) {
+      updateObj.object_value = object_value;
+    }
+
+    let result = await options.findOneAndUpdate(
+      { key: type },
+      { $set: updateObj },
+      { new: true },
+    );
+
+    return res.status(200).json({
+      message: "option updated",
+      data: result,
+    });
+  } catch (e) {
+    console.log(e.message);
+    return main_helper.error_response(res, "error updating global option");
+  }
+}
 
 module.exports = {
   make_transaction,
@@ -636,4 +824,7 @@ module.exports = {
   create_deposit_transaction,
   pending_deposit_transaction,
   coinbase_deposit_transaction,
+  create_global_option,
+  update_options,
+  submit_transaction,
 };

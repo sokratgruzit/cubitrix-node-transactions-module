@@ -15,7 +15,7 @@ async function get_account_balance(address, account_type_id) {
   }
 }
 // set account balance
-async function set_account_balance(address, account_type_id, balance) {
+async function set_account_balance(address, balance) {
   try {
     let balance_update = await accounts.findOneAndUpdate(
       { address, account_type_id },
