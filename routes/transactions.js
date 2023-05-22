@@ -18,4 +18,9 @@ router.post(
   transactions_controller.pending_deposit_transaction,
 );
 
+router.post(
+  "/coinbase_deposit_transaction",
+  transactions_controller.coinbase_deposit_transaction,
+);
+
 module.exports = router;

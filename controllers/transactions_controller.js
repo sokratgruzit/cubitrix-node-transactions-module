@@ -7,7 +7,10 @@ const {
   referral_links,
   referral_uni_users,
   referral_binary_users,
+  deposit_requests,
 } = require("@cubitrix/models");
+
+const axios = require("axios");
 // var Web3 = require("web3");
 
 async function deposit_transaction(req, res) {
@@ -550,18 +553,87 @@ async function get_tx_type(tx_type) {
 
 async function pending_deposit_transaction(req, res) {
   try {
-    let { from, amount, tx_currency, tx_type } = req.body;
+    let { from, amount, amountTransferedFrom, receivePaymentAddress, selectedMethod } =
+      req.body;
 
-    console.log(from, amount, "aahaha");
-    res.status(200).send({ success: true, message: "success" });
+    if (!from) return res.status(400).json(main_helper.error_message("from is required"));
+    from = from.toLowerCase();
+    amount = parseFloat(amount);
+
+    const deposit = await deposit_requests.create({
+      from,
+      amount,
+      amountTransferedFrom,
+      receivePaymentAddress,
+      selectedMethod,
+    });
+
+    res.status(200).send({ success: true, deposit });
   } catch (e) {
     return res.status(500).send({ success: false, message: "something went wrong" });
   }
 }
+
+async function coinbase_deposit_transaction(req, res) {
+  try {
+    let { from, amount, amountTransferedFrom, receivePaymentAddress, selectedMethod } =
+      req.body;
+
+    if (!from) return res.status(400).json(main_helper.error_message("from is required"));
+    from = from.toLowerCase();
+    amount = parseFloat(amount);
+
+    const chargeData = {
+      name: "Test Charge",
+      description: "This is a test charge",
+      pricing_type: "fixed_price",
+      local_price: {
+        amount: "3.00",
+        currency: "USD",
+      },
+      metadata: {
+        customer_id: "12345",
+        customer_name: "John Doe",
+      },
+      redirect_url: "http://localhost:3000/top-up",
+      cancel_url: "http://localhost:3000/top-up",
+    };
+
+    axios
+      .post("https://api.commerce.coinbase.com/charges", chargeData, {
+        headers: {
+          "X-CC-Api-Key": process.env.COINBASE_API_KEY,
+          "X-CC-Version": "2018-03-22",
+        },
+      })
+      .then((response) => {
+        const charge = response.data.data;
+        const responseData = {
+          hosted_url: charge.hosted_url,
+          expires_at: charge.expires_at,
+          amount: charge.pricing.local.amount,
+          currency: charge.pricing.local.currency,
+          addresses: charge.addresses,
+          exchange_rates: charge.exchange_rates,
+        };
+
+        res.status(200).send({ success: true, responseData });
+      })
+      .catch((error) => {
+        console.log(error);
+        res.status(500).send({ success: false, message: "something went wrong" });
+      });
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ success: false, message: "something went wrong" });
+  }
+}
+
 module.exports = {
   make_transaction,
   update_transaction_status,
   deposit_transaction,
   create_deposit_transaction,
   pending_deposit_transaction,
+  coinbase_deposit_transaction,
 };
