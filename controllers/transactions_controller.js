@@ -694,24 +694,32 @@ async function pending_deposit_transaction(req, res) {
 
 async function coinbase_deposit_transaction(req, res) {
   try {
-    let { from, amount, amountTransferedFrom, receivePaymentAddress, selectedMethod } =
-      req.body;
-
+    let { from, amount } = req.body;
     if (!from) return res.status(400).json(main_helper.error_message("from is required"));
     from = from.toLowerCase();
-    amount = parseFloat(amount);
+    const tx_hash = global_helper.make_hash();
+
+    const newTransaction = await transactions.create({
+      from,
+      to: from,
+      amount,
+      tx_hash,
+      tx_type: "deposit",
+      tx_currency: "ether",
+      tx_status: "pending",
+    });
 
     const chargeData = {
-      name: "Test Charge",
-      description: "This is a test charge",
+      name: "Pay with CoinBase",
+      description: "You can pay with your CoinBase wallet.",
       pricing_type: "fixed_price",
       local_price: {
-        amount: "3.00",
+        amount: amount,
         currency: "USD",
       },
       metadata: {
-        customer_id: "12345",
-        customer_name: "John Doe",
+        customer_id: "user id 1234",
+        customer_name: from,
       },
       redirect_url: "http://localhost:3000/top-up",
       cancel_url: "http://localhost:3000/top-up",
@@ -738,7 +746,7 @@ async function coinbase_deposit_transaction(req, res) {
         res.status(200).send({ success: true, responseData });
       })
       .catch((error) => {
-        console.log(error);
+        console.log(error?.response);
         res.status(500).send({ success: false, message: "something went wrong" });
       });
   } catch (e) {
