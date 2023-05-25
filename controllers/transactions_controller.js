@@ -11,12 +11,14 @@ const {
   options,
 } = require("@cubitrix/models");
 
+var Webhook = require("coinbase-commerce-node").Webhook;
+
+const jwt = require("jsonwebtoken");
+
 const axios = require("axios");
-// var Web3 = require("web3");
 
 async function deposit_transaction(req, res) {
   try {
-    //doesnt increase amount just creates log in transaction history and distributes referral bonus
     let { from, amount, tx_currency, tx_type } = req.body;
     if (!from) return res.status(400).json(main_helper.error_message("from is required"));
     from = from.toLowerCase();
@@ -699,7 +701,16 @@ async function coinbase_deposit_transaction(req, res) {
     from = from.toLowerCase();
     const tx_hash = global_helper.make_hash();
 
-    const newTransaction = await transactions.create({
+    const jwtPayload = {
+      from,
+      amount,
+    };
+
+    const token = jwt.sign(jwtPayload, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    await transactions.create({
       from,
       to: from,
       amount,
@@ -707,6 +718,10 @@ async function coinbase_deposit_transaction(req, res) {
       tx_type: "deposit",
       tx_currency: "ether",
       tx_status: "pending",
+      tx_options: {
+        method: "coinbase",
+        jwt: token,
+      },
     });
 
     const chargeData = {
@@ -716,13 +731,14 @@ async function coinbase_deposit_transaction(req, res) {
       local_price: {
         amount: amount,
         currency: "USD",
+        tx_hash,
       },
       metadata: {
-        customer_id: "user id 1234",
+        customer_id: "user id",
         customer_name: from,
       },
-      redirect_url: "http://localhost:3000/top-up",
-      cancel_url: "http://localhost:3000/top-up",
+      redirect_url: `http://localhost:3000/coinbase/success/${`s`}`,
+      cancel_url: `http://localhost:3000/coinbase/cancel/${`s`}`,
     };
 
     axios
@@ -732,8 +748,9 @@ async function coinbase_deposit_transaction(req, res) {
           "X-CC-Version": "2018-03-22",
         },
       })
-      .then((response) => {
+      .then(async (response) => {
         const charge = response.data.data;
+
         const responseData = {
           hosted_url: charge.hosted_url,
           expires_at: charge.expires_at,
@@ -754,6 +771,33 @@ async function coinbase_deposit_transaction(req, res) {
     res.status(500).send({ success: false, message: "something went wrong" });
   }
 }
+
+async function cancel_coinbase_deposit_transaction(req, res) {
+  try {
+    const { address, jwtToken } = req.body;
+
+    const jwtCheck = jwt.verify(jwtToken, process.env.JWT_SECRET);
+
+    console.log(jwtCheck, address);
+    // const { chargeId } = decoded;
+
+    // const transaction = await transactions.findOne({ where: { tx_hash: chargeId } });
+    // if (!transaction) {
+    //   return res.status(404).json({ success: false, message: "Transaction not found" });
+    // }
+
+    // transaction.tx_status = "cancelled";
+    // await transaction.save();
+
+    res
+      .status(200)
+      .json({ success: true, message: "Transaction cancelled successfully" });
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ success: false, message: "Something went wrong" });
+  }
+}
+
 async function create_global_option(req, res) {
   try {
     const { type, object_value, value } = req.body;
@@ -825,6 +869,39 @@ async function update_options(req, res) {
   }
 }
 
+async function coinbase_webhooks(req, res) {
+  try {
+    const verify = Webhook.verifySigHeader(
+      req.rawBody,
+      req.headers["x-cc-webhook-signature"],
+      process.env.COINBASE_WEBHOOK_SECRET,
+    );
+
+    if (!verify) {
+      return res.status(400).send({ success: false, message: "invalid signature" });
+    }
+
+    const event = req.body.event;
+
+    // if (event.type === "charge:confired") {
+    //   let amount = event.data.pricing.local.amount;
+    //   let pricing = event.data.pricing.local.currency;
+    // }
+
+    console.log(event.type);
+    if (event.type === "charge:failed") {
+      let metadata = event.data.metadata;
+      console.log(event.data);
+      let transaction = await transactions.findOneAndUpdate(
+        { tx_hash: metadata.tx_hash },
+        { tx_status: "Canceled" },
+      );
+      console.log(transaction);
+    }
+  } catch (e) {
+    console.log(e);
+  }
+}
 module.exports = {
   make_transaction,
   update_transaction_status,
@@ -835,4 +912,6 @@ module.exports = {
   create_global_option,
   update_options,
   submit_transaction,
+  cancel_coinbase_deposit_transaction,
+  coinbase_webhooks,
 };

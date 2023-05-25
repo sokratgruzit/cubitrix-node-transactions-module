@@ -5,7 +5,17 @@ require("dotenv").config();
 const cors = require("cors");
 const cors_options = require("./config/cors_options");
 const app = express();
-app.use(express.json({ extended: true }));
+app.use(
+  express.json({
+    extended: true,
+    verify: (req, res, buf) => {
+      const url = req.originalUrl;
+      if (url.startsWith("/api/transactions/coinbase_webhooks")) {
+        req.rawBody = buf.toString();
+      }
+    },
+  }),
+);
 app.use(cors(cors_options));
 app.use("/api/transactions", transactions);
 
