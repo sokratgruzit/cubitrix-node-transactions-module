@@ -262,11 +262,17 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
     tx_currency,
   });
 
-  const wtf = await deposit_referral_bonus(createdTransaction, tx_hash);
+  const deposit_referral = await deposit_referral_bonus(
+    createdTransaction,
+    tx_hash
+  );
 
-  return { message: "transaction created", data: createdTransaction, wtf };
+  return {
+    message: "transaction created",
+    data: createdTransaction,
+    deposit_referral,
+  };
 }
-
 // make_transaction
 async function make_transaction(req, res) {
   try {
@@ -749,9 +755,13 @@ async function send_uni_referral_transaction(
   let to_address = user_uni_referral[0]?.account_id?.address;
   let tx_hash_generated = global_helper.make_hash();
   if (tx.to != to_address) {
+    let to_system = await accounts.findOne({
+      $or: [{ account_owner: to_address }, { address: to_address }],
+      account_category: "system",
+    });
     let tx_save_uni = await transactions.create({
       tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
-      to: to_address,
+      to: to_system?.address,
       amount: tx_amount,
       from: tx.to,
       tx_status: "approved",
@@ -828,9 +838,13 @@ async function send_binary_referral_transaction(
     ) {
       let tx_hash_generated = global_helper.make_hash();
       if (tx.to != to_address) {
+        let to_system = await accounts.findOne({
+          $or: [{ account_owner: to_address }, { address: to_address }],
+          account_category: "system",
+        });
         let tx_save_binary = await transactions.create({
           tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
-          to: to_address,
+          to: to_system?.address,
           amount: tx_amount,
           from: tx.to,
           tx_status: "approved",
