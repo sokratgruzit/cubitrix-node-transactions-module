@@ -99,6 +99,9 @@ async function get_transactions_of_user(req, res) {
     const req_body = await req.body;
     const req_page = req_body.page ? req_body.page : 1;
     const limit = req_body.limit ? req_body.limit : 10;
+    const account_type = req_body?.account ? req_body?.account : "all";
+    const method_type = req_body?.type ? req_body?.type : "all";
+    const date_type = req_body?.time ? req_body?.time : "all";
     const address = req_body?.address;
     if (!address) {
       return res
@@ -109,26 +112,18 @@ async function get_transactions_of_user(req, res) {
       {
         $or: [{ address: address }, { account_owner: address }],
       },
-      { address: 1, _id: 0 }
+      { address: 1, _id: 0, account_category: 1 }
     );
     let addr_arr = [];
     for (let i = 0; i < accounts_list.length; i++) {
-      addr_arr.push(accounts_list[i].address);
+      if (account_type == "all") {
+        addr_arr.push(accounts_list[i].address);
+      } else {
+        if (accounts_list[i].account_category == account_type) {
+          addr_arr.push(accounts_list[i].address);
+        }
+      }
     }
-    let data = {
-      $or: [
-        {
-          to: {
-            $in: addr_arr,
-          },
-        },
-        {
-          from: {
-            $in: addr_arr,
-          },
-        },
-      ],
-    };
     const pipeline = [
       {
         $facet: {
@@ -165,6 +160,54 @@ async function get_transactions_of_user(req, res) {
       },
     ];
     let amounts_to_from = await transactions.aggregate(pipeline);
+    let tx_type_to_check = null;
+    let data = {
+      $or: [
+        {
+          to: {
+            $in: addr_arr,
+          },
+        },
+        {
+          from: {
+            $in: addr_arr,
+          },
+        },
+      ],
+    };
+    if (method_type != "all" && method_type != null) {
+      if (method_type == "bonus") {
+        let referral_types = [
+          "referral_bonus_uni_level",
+          "referral_bonus_binary_level_1",
+          "referral_bonus_binary_level_2",
+          "referral_bonus_binary_level_3",
+          "referral_bonus_binary_level_4",
+          "referral_bonus_binary_level_5",
+          "referral_bonus_binary_level_6",
+          "referral_bonus_binary_level_7",
+          "referral_bonus_binary_level_8",
+          "referral_bonus_binary_level_9",
+          "referral_bonus_binary_level_10",
+          "referral_bonus_binary_level_11",
+        ];
+        data.tx_type = { $in: referral_types };
+      } else {
+        data.tx_type = method_type;
+      }
+    }
+    if (date_type != "all" && date_type != null) {
+      const targetDate = new Date(date_type);
+      targetDate.setUTCHours(0, 0, 0, 0); // Set time to the beginning of the target date
+
+      const nextDay = new Date(targetDate);
+      nextDay.setDate(targetDate.getDate() + 1); // Set next day's date
+
+      data.createdAt = {
+        $gte: targetDate,
+        $lt: nextDay,
+      };
+    }
     result = await transactions
       .find(data)
       .sort({ createdAt: "desc" })
@@ -832,8 +875,13 @@ async function get_tx_type(tx_type) {
 
 async function pending_deposit_transaction(req, res) {
   try {
-    let { from, amount, amountTransferedFrom, receivePaymentAddress, startDate } =
-      req.body;
+    let {
+      from,
+      amount,
+      amountTransferedFrom,
+      receivePaymentAddress,
+      startDate,
+    } = req.body;
 
     if (!from)
       return res
@@ -1058,7 +1106,7 @@ async function coinbase_webhooks(req, res) {
       let metadata = event.data.metadata;
       await transactions.findOneAndUpdate(
         { tx_hash: metadata.tx_hash },
-        { tx_status: "paid", amount },
+        { tx_status: "paid", amount }
       );
     }
 
