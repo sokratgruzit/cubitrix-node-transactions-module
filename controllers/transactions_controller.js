@@ -673,22 +673,31 @@ async function get_tx_type(tx_type) {
 
 async function pending_deposit_transaction(req, res) {
   try {
-    let { from, amount, amountTransferedFrom, receivePaymentAddress, selectedMethod } =
+    let { from, amount, amountTransferedFrom, receivePaymentAddress, startDate } =
       req.body;
 
     if (!from) return res.status(400).json(main_helper.error_message("from is required"));
     from = from.toLowerCase();
-    amount = parseFloat(amount);
 
-    const deposit = await deposit_requests.create({
+    const tx_hash = global_helper.make_hash();
+
+    const transaction = await transactions.create({
       from,
+      to: from,
       amount,
-      amountTransferedFrom,
-      receivePaymentAddress,
-      selectedMethod,
+      tx_hash,
+      tx_type: "deposit",
+      tx_currency: "ether",
+      tx_status: "pending",
+      tx_options: {
+        method: "manual",
+        receivePaymentAddress,
+        amountTransferedFrom,
+        startDate,
+      },
     });
 
-    res.status(200).send({ success: true, deposit });
+    res.status(200).send({ success: true, transaction });
   } catch (e) {
     return res.status(500).send({ success: false, message: "something went wrong" });
   }
@@ -701,28 +710,18 @@ async function coinbase_deposit_transaction(req, res) {
     from = from.toLowerCase();
     const tx_hash = global_helper.make_hash();
 
-    const jwtPayload = {
-      from,
-      amount,
-    };
-
-    const token = jwt.sign(jwtPayload, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-
-    await transactions.create({
-      from,
-      to: from,
-      amount,
-      tx_hash,
-      tx_type: "deposit",
-      tx_currency: "ether",
-      tx_status: "pending",
-      tx_options: {
-        method: "coinbase",
-        jwt: token,
-      },
-    });
+    // await transactions.create({
+    //   from,
+    //   to: from,
+    //   amount,
+    //   tx_hash,
+    //   tx_type: "deposit",
+    //   tx_currency: "ether",
+    //   tx_status: "pending",
+    //   tx_options: {
+    //     method: "coinbase",
+    //   },
+    // });
 
     const chargeData = {
       name: "Pay with CoinBase",
@@ -731,14 +730,14 @@ async function coinbase_deposit_transaction(req, res) {
       local_price: {
         amount: amount,
         currency: "USD",
-        tx_hash,
       },
       metadata: {
         customer_id: "user id",
         customer_name: from,
+        tx_hash,
       },
-      redirect_url: `http://localhost:3000/coinbase/success/${`s`}`,
-      cancel_url: `http://localhost:3000/coinbase/cancel/${`s`}`,
+      redirect_url: `http://localhost:3000/coinbase/success/s`,
+      cancel_url: `http://localhost:3000/coinbase/cancel/s`,
     };
 
     axios
@@ -883,21 +882,24 @@ async function coinbase_webhooks(req, res) {
 
     const event = req.body.event;
 
-    // if (event.type === "charge:confired") {
-    //   let amount = event.data.pricing.local.amount;
-    //   let pricing = event.data.pricing.local.currency;
-    // }
+    if (event.type === "charge:confired") {
+      let amount = event.data.pricing.local.amount;
+      let metadata = event.data.metadata;
+      await transactions.findOneAndUpdate(
+        { tx_hash: metadata.tx_hash },
+        { tx_status: "paid", amount },
+      );
+    }
 
-    console.log(event.type);
     if (event.type === "charge:failed") {
       let metadata = event.data.metadata;
-      console.log(event.data);
-      let transaction = await transactions.findOneAndUpdate(
+      await transactions.findOneAndUpdate(
         { tx_hash: metadata.tx_hash },
-        { tx_status: "Canceled" },
+        { tx_status: "canceled" },
       );
-      console.log(transaction);
     }
+
+    console.log(event.type);
   } catch (e) {
     console.log(e);
   }
