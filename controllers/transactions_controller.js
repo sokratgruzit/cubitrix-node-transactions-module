@@ -93,6 +93,9 @@ async function get_transactions_of_user(req, res) {
     const req_body = await req.body;
     const req_page = req_body.page ? req_body.page : 1;
     const limit = req_body.limit ? req_body.limit : 10;
+    const account_type = req_body?.account ? req_body?.account : "all";
+    const method_type = req_body?.type ? req_body?.type : "all";
+    const date_type = req_body?.time ? req_body?.time : "all";
     const address = req_body?.address;
     if (!address) {
       return res.status(500).send({ success: false, message: "address not provided" });
@@ -101,26 +104,18 @@ async function get_transactions_of_user(req, res) {
       {
         $or: [{ address: address }, { account_owner: address }],
       },
-      { address: 1, _id: 0 },
+      { address: 1, _id: 0, account_category: 1 },
     );
     let addr_arr = [];
     for (let i = 0; i < accounts_list.length; i++) {
-      addr_arr.push(accounts_list[i].address);
+      if (account_type == "all") {
+        addr_arr.push(accounts_list[i].address);
+      } else {
+        if (accounts_list[i].account_category == account_type) {
+          addr_arr.push(accounts_list[i].address);
+        }
+      }
     }
-    let data = {
-      $or: [
-        {
-          to: {
-            $in: addr_arr,
-          },
-        },
-        {
-          from: {
-            $in: addr_arr,
-          },
-        },
-      ],
-    };
     const pipeline = [
       {
         $facet: {
@@ -157,6 +152,54 @@ async function get_transactions_of_user(req, res) {
       },
     ];
     let amounts_to_from = await transactions.aggregate(pipeline);
+    let tx_type_to_check = null;
+    let data = {
+      $or: [
+        {
+          to: {
+            $in: addr_arr,
+          },
+        },
+        {
+          from: {
+            $in: addr_arr,
+          },
+        },
+      ],
+    };
+    if (method_type != "all" && method_type != null) {
+      if (method_type == "bonus") {
+        let referral_types = [
+          "referral_bonus_uni_level",
+          "referral_bonus_binary_level_1",
+          "referral_bonus_binary_level_2",
+          "referral_bonus_binary_level_3",
+          "referral_bonus_binary_level_4",
+          "referral_bonus_binary_level_5",
+          "referral_bonus_binary_level_6",
+          "referral_bonus_binary_level_7",
+          "referral_bonus_binary_level_8",
+          "referral_bonus_binary_level_9",
+          "referral_bonus_binary_level_10",
+          "referral_bonus_binary_level_11",
+        ];
+        data.tx_type = { $in: referral_types };
+      } else {
+        data.tx_type = method_type;
+      }
+    }
+    if (date_type != "all" && date_type != null) {
+      const targetDate = new Date(date_type);
+      targetDate.setUTCHours(0, 0, 0, 0); // Set time to the beginning of the target date
+
+      const nextDay = new Date(targetDate);
+      nextDay.setDate(targetDate.getDate() + 1); // Set next day's date
+
+      data.createdAt = {
+        $gte: targetDate,
+        $lt: nextDay,
+      };
+    }
     result = await transactions
       .find(data)
       .sort({ createdAt: "desc" })
@@ -204,11 +247,14 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
     tx_currency,
   });
 
-  const wtf = await deposit_referral_bonus(createdTransaction, tx_hash);
+  const deposit_referral = await deposit_referral_bonus(createdTransaction, tx_hash);
 
-  return { message: "transaction created", data: createdTransaction, wtf };
+  return {
+    message: "transaction created",
+    data: createdTransaction,
+    deposit_referral,
+  };
 }
-
 // make_transaction
 async function make_transaction(req, res) {
   try {
@@ -639,9 +685,13 @@ async function send_uni_referral_transaction(
   let to_address = user_uni_referral[0]?.account_id?.address;
   let tx_hash_generated = global_helper.make_hash();
   if (tx.to != to_address) {
+    let to_system = await accounts.findOne({
+      $or: [{ account_owner: to_address }, { address: to_address }],
+      account_category: "system",
+    });
     let tx_save_uni = await transactions.create({
       tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
-      to: to_address,
+      to: to_system?.address,
       amount: tx_amount,
       from: tx.to,
       tx_status: "approved",
@@ -715,9 +765,13 @@ async function send_binary_referral_transaction(
     if (already_taken_bonus + tx_amount <= referral_options?.object_value[lba]) {
       let tx_hash_generated = global_helper.make_hash();
       if (tx.to != to_address) {
+        let to_system = await accounts.findOne({
+          $or: [{ account_owner: to_address }, { address: to_address }],
+          account_category: "system",
+        });
         let tx_save_binary = await transactions.create({
           tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
-          to: to_address,
+          to: to_system?.address,
           amount: tx_amount,
           from: tx.to,
           tx_status: "approved",
