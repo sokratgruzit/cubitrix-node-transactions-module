@@ -999,6 +999,9 @@ var tokenAddress = "0xE807fbeB6A088a7aF862A2dCbA1d64fE0d9820Cb"; // Staking Toke
 
 async function coinbase_webhooks(req, res) {
   try {
+    if (!req.headers["x-cc-webhook-signature"] || process.env.COINBASE_WEBHOOK_SECRET) {
+      return res.status(400).send({ success: false, message: "invalid signature" });
+    }
     const verify = Webhook.verifySigHeader(
       req.rawBody,
       req.headers["x-cc-webhook-signature"],
@@ -1056,10 +1059,6 @@ async function coinbase_webhooks(req, res) {
         { tx_status: "canceled" },
       );
     }
-
-    console.log(event.type);
-
-    console.log(event.type);
   } catch (e) {
     console.log(e);
   }
