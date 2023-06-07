@@ -16,6 +16,8 @@ app.use(
     },
   }),
 );
+require("dotenv").config();
+
 app.use(cors(cors_options));
 app.use("/api/transactions", transactions);
 
