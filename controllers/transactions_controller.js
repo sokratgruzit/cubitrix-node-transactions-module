@@ -999,7 +999,6 @@ var tokenAddress = "0xE807fbeB6A088a7aF862A2dCbA1d64fE0d9820Cb"; // Staking Toke
 
 async function coinbase_webhooks(req, res) {
   try {
-    console.log("comes");
     // if (!req.headers["x-cc-webhook-signature"] || process.env.COINBASE_WEBHOOK_SECRET) {
     //   return res.status(400).send({ success: false, message: "invalid signature" });
     // }
@@ -1017,11 +1016,18 @@ async function coinbase_webhooks(req, res) {
 
     let amount = event.data.pricing.local.amount;
     let metadata = event.data.metadata;
-    console.log(event.type, metadata, amount);
     if (event.type === "charge:confired") {
       await transactions.findOneAndUpdate(
         { tx_hash: metadata.tx_hash },
         { tx_status: "paid", amount: Number(amount) },
+      );
+    }
+
+    if (event.type === "charge:failed") {
+      let metadata = event.data.metadata;
+      await transactions.findOneAndUpdate(
+        { tx_hash: metadata.tx_hash },
+        { tx_status: "canceled" },
       );
       try {
         const contract = new web3.eth.Contract(minABI, tokenAddress);
@@ -1045,23 +1051,14 @@ async function coinbase_webhooks(req, res) {
             } else {
               web3.eth
                 .sendSignedTransaction(signed.rawTransaction)
-                .on("receipt", console.log);
+                .on("receipt", console.log)
+                .on("error", console.log);
             }
           },
         );
       } catch (e) {
         console.log(e);
       }
-    }
-
-    console.log(event.type, metadata, amount);
-
-    if (event.type === "charge:failed") {
-      let metadata = event.data.metadata;
-      await transactions.findOneAndUpdate(
-        { tx_hash: metadata.tx_hash },
-        { tx_status: "canceled" },
-      );
     }
   } catch (e) {
     console.log(e);
