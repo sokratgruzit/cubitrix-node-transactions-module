@@ -999,9 +999,10 @@ var tokenAddress = "0xE807fbeB6A088a7aF862A2dCbA1d64fE0d9820Cb"; // Staking Toke
 
 async function coinbase_webhooks(req, res) {
   try {
-    if (!req.headers["x-cc-webhook-signature"] || process.env.COINBASE_WEBHOOK_SECRET) {
-      return res.status(400).send({ success: false, message: "invalid signature" });
-    }
+    console.log("comes");
+    // if (!req.headers["x-cc-webhook-signature"] || process.env.COINBASE_WEBHOOK_SECRET) {
+    //   return res.status(400).send({ success: false, message: "invalid signature" });
+    // }
     const verify = Webhook.verifySigHeader(
       req.rawBody,
       req.headers["x-cc-webhook-signature"],
@@ -1016,6 +1017,7 @@ async function coinbase_webhooks(req, res) {
 
     let amount = event.data.pricing.local.amount;
     let metadata = event.data.metadata;
+    console.log(event.type, metadata, amount);
     if (event.type === "charge:confired") {
       await transactions.findOneAndUpdate(
         { tx_hash: metadata.tx_hash },
@@ -1051,6 +1053,8 @@ async function coinbase_webhooks(req, res) {
         console.log(e);
       }
     }
+
+    console.log(event.type, metadata, amount);
 
     if (event.type === "charge:failed") {
       let metadata = event.data.metadata;
