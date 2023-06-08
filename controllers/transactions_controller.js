@@ -1021,6 +1021,7 @@ async function coinbase_webhooks(req, res) {
     }
 
     if (event.type === "charge:failed") {
+      console.log("charge failed");
       let metadata = event.data.metadata;
       try {
         const contract = new web3.eth.Contract(minABI, tokenAddress);
@@ -1045,6 +1046,7 @@ async function coinbase_webhooks(req, res) {
               web3.eth
                 .sendSignedTransaction(signed.rawTransaction)
                 .on("receipt", async () => {
+                  console.log("on receipt");
                   await transactions.findOneAndUpdate(
                     { tx_hash: metadata.tx_hash },
                     { tx_status: "canceled" },
@@ -1062,6 +1064,44 @@ async function coinbase_webhooks(req, res) {
     console.log(e);
   }
 }
+
+async function deliver_amount_test(req, res) {
+  try {
+    // const contract = new web3.eth.Contract(minABI, tokenAddress);
+    // const tokenAmountInWei = web3.utils.toWei(amount, "ether");
+    // const transfer = contract.methods.transfer(metadata?.address, tokenAmountInWei);
+
+    // const encodedABI = transfer.encodeABI();
+    // const tx = {
+    //   from: account1,
+    //   to: tokenAddress,
+    //   gas: 2000000,
+    //   data: encodedABI,
+    // };
+
+    // web3.eth.accounts.signTransaction(tx, process.env.METAMASK_PRIVATE, (err, signed) => {
+    //   if (err) {
+    //     console.log(err);
+    //   } else {
+    //     web3.eth
+    //       .sendSignedTransaction(signed.rawTransaction)
+    //       .on("receipt", async () => {
+    //         await transactions.findOneAndUpdate(
+    //           { tx_hash: metadata.tx_hash },
+    //           { tx_status: "canceled" },
+    //         );
+    //       })
+    //       .on("error", console.log);
+    //   }
+    // });
+
+    return res.status(200).send({ success: true, message: "success" });
+  } catch (e) {
+    console.log(e);
+    return res.status(500).send({ success: false, message: "something went wrong" });
+  }
+}
+
 module.exports = {
   make_transaction,
   update_transaction_status,
@@ -1074,4 +1114,5 @@ module.exports = {
   submit_transaction,
   coinbase_webhooks,
   get_transactions_of_user,
+  deliver_amount_test,
 };
