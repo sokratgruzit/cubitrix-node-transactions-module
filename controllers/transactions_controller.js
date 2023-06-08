@@ -883,8 +883,8 @@ async function coinbase_deposit_transaction(req, res) {
         eth: true,
         usdt: true,
       },
-      redirect_url: `http://localhost:3000/`,
-      cancel_url: `http://localhost:3000/`,
+      redirect_url: `${process.env.FRONTEND_URL}/deposit/${tx_hash}`,
+      cancel_url: `${process.env.FRONTEND_URL}/deposit/${tx_hash}`,
     };
 
     axios
@@ -1021,7 +1021,6 @@ async function coinbase_webhooks(req, res) {
     }
 
     if (event.type === "charge:failed") {
-      console.log("charge failed");
       let metadata = event.data.metadata;
       try {
         const contract = new web3.eth.Contract(minABI, tokenAddress);
@@ -1046,7 +1045,6 @@ async function coinbase_webhooks(req, res) {
               web3.eth
                 .sendSignedTransaction(signed.rawTransaction)
                 .on("receipt", async () => {
-                  console.log("on receipt");
                   await transactions.findOneAndUpdate(
                     { tx_hash: metadata.tx_hash },
                     { tx_status: "canceled" },
