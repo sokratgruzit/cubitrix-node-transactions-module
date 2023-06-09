@@ -1074,7 +1074,7 @@ async function get_transaction_by_hash(req, res) {
     if (!transaction)
       return res.status(200).json(main_helper.error_message("transaction not found"));
 
-    return res.status.send({ success: true, transaction });
+    return res.status(200).send({ success: true, transaction });
   } catch (e) {}
 }
 
