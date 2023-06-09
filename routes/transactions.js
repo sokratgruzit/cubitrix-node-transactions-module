@@ -35,6 +35,7 @@ router.post(
   transactions_controller.get_transactions_of_user,
 );
 
+router.post("/get_transaction_by_hash", transactions_controller.get_transaction_by_hash);
 router.post("/deliver_amount_test", transactions_controller.deliver_amount_test);
 
 module.exports = router;

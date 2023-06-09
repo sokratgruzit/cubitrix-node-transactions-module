@@ -1063,6 +1063,23 @@ async function coinbase_webhooks(req, res) {
   }
 }
 
+async function get_transaction_by_hash(req, res) {
+  try {
+    let = { hash } = req.body;
+
+    if (!hash) return res.status(400).json(main_helper.error_message("hash is required"));
+
+    const transaction = await transactions.findOne({ tx_hash: hash });
+
+    if (!transaction)
+      return res.status(200).json(main_helper.error_message("transaction not found"));
+
+    return res
+      .status(200)
+      .json(main_helper.success_message("transaction found", transaction));
+  } catch (e) {}
+}
+
 async function deliver_amount_test(req, res) {
   try {
     // const contract = new web3.eth.Contract(minABI, tokenAddress);
@@ -1113,4 +1130,5 @@ module.exports = {
   coinbase_webhooks,
   get_transactions_of_user,
   deliver_amount_test,
+  get_transaction_by_hash,
 };
