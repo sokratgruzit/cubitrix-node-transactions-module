@@ -22,7 +22,10 @@ const axios = require("axios");
 async function deposit_transaction(req, res) {
   try {
     let { from, amount, tx_currency, tx_type } = req.body;
-    if (!from) return res.status(400).json(main_helper.error_message("from is required"));
+    if (!from)
+      return res
+        .status(400)
+        .json(main_helper.error_message("from is required"));
     from = from.toLowerCase();
     amount = parseFloat(amount);
     let tx_hash_generated = global_helper.make_hash();
@@ -30,10 +33,15 @@ async function deposit_transaction(req, res) {
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
     let tx_type_db = await get_tx_type(tx_type);
-    let tx_global_currency = await global_helper.get_option_by_key("global_currency");
+    let tx_global_currency = await global_helper.get_option_by_key(
+      "global_currency"
+    );
     let tx_fee_currency = tx_global_currency?.data?.value;
     let tx_wei = tx_type_db?.data?.tx_fee;
-    let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
+    let tx_fee_value = await global_helper.calculate_tx_fee(
+      tx_wei,
+      tx_fee_currency
+    );
 
     let tx_fee = tx_fee_value?.data;
     let denomination = 0;
@@ -41,7 +49,7 @@ async function deposit_transaction(req, res) {
     if (!(tx_type_db.success && tx_global_currency.success)) {
       return main_helper.error_response(
         res,
-        "such kind of transaction type is not defined.",
+        "such kind of transaction type is not defined."
       );
     }
 
@@ -98,13 +106,15 @@ async function get_transactions_of_user(req, res) {
     const date_type = req_body?.time ? req_body?.time : "all";
     const address = req_body?.address;
     if (!address) {
-      return res.status(500).send({ success: false, message: "address not provided" });
+      return res
+        .status(500)
+        .send({ success: false, message: "address not provided" });
     }
     let accounts_list = await accounts.find(
       {
         $or: [{ address: address }, { account_owner: address }],
       },
-      { address: 1, _id: 0, account_category: 1 },
+      { address: 1, _id: 0, account_category: 1 }
     );
     let addr_arr = [];
     for (let i = 0; i < accounts_list.length; i++) {
@@ -214,7 +224,9 @@ async function get_transactions_of_user(req, res) {
     });
   } catch (e) {
     console.log(e.message);
-    return res.status(500).send({ success: false, message: "something went wrong" });
+    return res
+      .status(500)
+      .send({ success: false, message: "something went wrong" });
   }
 }
 
@@ -226,10 +238,15 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
   let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
   let tx_type_db = await get_tx_type(tx_type);
-  let tx_global_currency = await global_helper.get_option_by_key("global_currency");
+  let tx_global_currency = await global_helper.get_option_by_key(
+    "global_currency"
+  );
   let tx_fee_currency = tx_global_currency?.data?.value;
   let tx_wei = tx_type_db?.data?.tx_fee;
-  let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
+  let tx_fee_value = await global_helper.calculate_tx_fee(
+    tx_wei,
+    tx_fee_currency
+  );
 
   let tx_fee = tx_fee_value?.data;
   let denomination = 0;
@@ -247,7 +264,10 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
     tx_currency,
   });
 
-  const deposit_referral = await deposit_referral_bonus(createdTransaction, tx_hash);
+  const deposit_referral = await deposit_referral_bonus(
+    createdTransaction,
+    tx_hash
+  );
 
   return {
     message: "transaction created",
@@ -265,22 +285,33 @@ async function make_transaction(req, res) {
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
     let tx_type_db = await get_tx_type(tx_type);
     amount = parseFloat(amount);
-    let tx_global_currency = await global_helper.get_option_by_key("global_currency");
+    let tx_global_currency = await global_helper.get_option_by_key(
+      "global_currency"
+    );
     let tx_fee_currency = tx_global_currency?.data?.value;
     let tx_wei = tx_type_db?.data?.tx_fee;
-    let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
+    let tx_fee_value = await global_helper.calculate_tx_fee(
+      tx_wei,
+      tx_fee_currency
+    );
     let tx_fee = tx_fee_value.data;
     let denomination = 0;
 
     if (tx_type == "withdraw") {
       try {
         if (!from && !amount && !tx_currency) {
-          return main_helper.error_response(res, "please provide all necessary values");
+          return main_helper.error_response(
+            res,
+            "please provide all necessary values"
+          );
         }
         let account = await accounts.findOne({ address: from });
         to = account.account_owner;
         if (!to || account.active === false) {
-          return main_helper.error_response(res, "Cannot withdraw from this account");
+          return main_helper.error_response(
+            res,
+            "Cannot withdraw from this account"
+          );
         }
       } catch (e) {
         console.log(e.message);
@@ -290,7 +321,10 @@ async function make_transaction(req, res) {
     if (tx_type == "deposit") {
       try {
         if (!to && !amount && !tx_currency) {
-          return main_helper.error_response(res, "please provide all necessary values");
+          return main_helper.error_response(
+            res,
+            "please provide all necessary values"
+          );
         }
         let account = await accounts.findOne({
           account_owner: to,
@@ -298,7 +332,10 @@ async function make_transaction(req, res) {
         from = account.account_owner;
 
         if (!from || account.active === false) {
-          return main_helper.error_response(res, "Cannot deposit to this account");
+          return main_helper.error_response(
+            res,
+            "Cannot deposit to this account"
+          );
         }
       } catch (e) {
         console.log(e.message);
@@ -308,33 +345,43 @@ async function make_transaction(req, res) {
     if (tx_type == "transfer") {
       try {
         if (!from && !to && !amount && !tx_type && !tx_currency) {
-          return main_helper.error_response(res, "please provide all necessary values");
+          return main_helper.error_response(
+            res,
+            "please provide all necessary values"
+          );
         }
         let account = await accounts.findOne({
           address: to,
         });
         from = account.account_owner;
         if (!from || account.active === false) {
-          return main_helper.error_response(res, "Cannot deposit to this account");
+          return main_helper.error_response(
+            res,
+            "Cannot deposit to this account"
+          );
         }
       } catch (e) {
         console.log(e.message);
         return main_helper.error_response(res, "error saving transaction");
       }
     }
-    let check_from_address_exists = await global_helper.check_if_address_exists(from);
-    let check_to_address_exists = await global_helper.check_if_address_exists(to);
+    let check_from_address_exists = await global_helper.check_if_address_exists(
+      from
+    );
+    let check_to_address_exists = await global_helper.check_if_address_exists(
+      to
+    );
     if (!check_from_address_exists && !check_to_address_exists) {
       return main_helper.error_response(
         res,
-        "we dont have such address registered in our system.",
+        "we dont have such address registered in our system."
       );
     }
 
     if (!(tx_type_db.success && tx_global_currency.success)) {
       return main_helper.error_response(
         res,
-        "such kind of transaction type is not defined.",
+        "such kind of transaction type is not defined."
       );
     }
 
@@ -406,7 +453,10 @@ async function submit_transaction(req, res) {
   try {
     let { from, to, amount, tx_currency } = req.body;
     if (!from && !to && !amount && !tx_currency) {
-      return main_helper.error_response(res, "please provide all necessary values");
+      return main_helper.error_response(
+        res,
+        "please provide all necessary values"
+      );
     }
 
     from = from.toLowerCase();
@@ -422,7 +472,10 @@ async function submit_transaction(req, res) {
     });
 
     if (!account_from || !account_to) {
-      return main_helper.error_response(res, "Can't find account with this address");
+      return main_helper.error_response(
+        res,
+        "Can't find account with this address"
+      );
     }
 
     if (!account_from.active || !account_to.active) {
@@ -455,14 +508,19 @@ async function submit_transaction(req, res) {
     if (!tx_type_db.success) {
       return main_helper.error_response(
         res,
-        "such kind of transaction type is not defined.",
+        "such kind of transaction type is not defined."
       );
     }
 
-    let tx_global_currency = await global_helper.get_option_by_key("global_currency");
+    let tx_global_currency = await global_helper.get_option_by_key(
+      "global_currency"
+    );
     let tx_fee_currency = tx_global_currency?.data?.value;
     let tx_wei = tx_type_db?.data?.tx_fee;
-    let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
+    let tx_fee_value = await global_helper.calculate_tx_fee(
+      tx_wei,
+      tx_fee_currency
+    );
     let tx_fee = parseFloat(tx_fee_value.data);
     let denomination = 0;
 
@@ -471,21 +529,24 @@ async function submit_transaction(req, res) {
     if (!(account_from_balance >= total_amount_necessary)) {
       return main_helper.error_response(
         res,
-        "there is no sufficient amount on your balance",
+        "there is no sufficient amount on your balance"
       );
     }
 
     const fromBalanceUpdated = await global_helper.set_account_balance(
       from,
-      -total_amount_necessary,
+      -total_amount_necessary
     );
 
-    const toBalanceUpdated = await global_helper.set_account_balance(to, amount);
+    const toBalanceUpdated = await global_helper.set_account_balance(
+      to,
+      amount
+    );
 
     if (!fromBalanceUpdated.success || !toBalanceUpdated.success) {
       return main_helper.error_response(
         res,
-        "balance update failed, please try again later",
+        "balance update failed, please try again later"
       );
     }
 
@@ -530,7 +591,9 @@ async function update_transaction_status(req, res) {
 
     let account_type_from = await global_helper.get_type_by_address(tx.from);
     let account_type_to = await global_helper.get_type_by_address(tx.to);
-    let get_from_account_balance = await global_helper.get_account_balance(tx.from);
+    let get_from_account_balance = await global_helper.get_account_balance(
+      tx.from
+    );
     let referral_resp;
     let get_to_account_balance = await global_helper.get_account_balance(tx.to);
 
@@ -543,22 +606,27 @@ async function update_transaction_status(req, res) {
         ) {
           return main_helper.error_response(
             res,
-            "there is no sufficient amount on your balance",
+            "there is no sufficient amount on your balance"
           );
         }
-        let get_from_account_balance_value = parseFloat(get_from_account_balance?.data);
-        let get_to_account_balance_value = parseFloat(get_to_account_balance?.data);
+        let get_from_account_balance_value = parseFloat(
+          get_from_account_balance?.data
+        );
+        let get_to_account_balance_value = parseFloat(
+          get_to_account_balance?.data
+        );
         await global_helper.set_account_balance(
           tx.from,
-          get_from_account_balance_value - (tx.amount + parseFloat(tx.tx_fee)),
+          get_from_account_balance_value - (tx.amount + parseFloat(tx.tx_fee))
         );
         await global_helper.set_account_balance(
           tx.to,
-          (get_to_account_balance_value ? get_to_account_balance_value : 0) + tx.amount,
+          (get_to_account_balance_value ? get_to_account_balance_value : 0) +
+            tx.amount
         );
         let tx_updated = await transactions.findOneAndUpdate(
           { tx_hash: tx_hash },
-          { tx_status: "approved" },
+          { tx_status: "approved" }
         );
         if (tx_updated) {
           if (tx.tx_type == "deposit") {
@@ -572,7 +640,7 @@ async function update_transaction_status(req, res) {
       } else {
         return main_helper.error_response(
           res,
-          "Transaction already approved, can not change status anymore",
+          "Transaction already approved, can not change status anymore"
         );
       }
     }
@@ -580,12 +648,12 @@ async function update_transaction_status(req, res) {
       if (tx.tx_status == "approved") {
         return main_helper.error_response(
           res,
-          "Transaction approved and can not change status",
+          "Transaction approved and can not change status"
         );
       } else {
         let tx_updated = await transactions.findOneAndUpdate(
           { tx_hash: tx_hash },
-          { tx_status: "cancelled" },
+          { tx_status: "cancelled" }
         );
         if (tx_updated) {
           return main_helper.success_response(res, "Transaction cancelled");
@@ -600,7 +668,9 @@ async function update_transaction_status(req, res) {
 }
 
 async function deposit_referral_bonus(tx, tx_hash) {
-  let referral_options = await global_helper.get_option_by_key("referral_options");
+  let referral_options = await global_helper.get_option_by_key(
+    "referral_options"
+  );
   referral_options = referral_options?.data;
   if (referral_options.object_value.referral_activated == "none") {
     return false;
@@ -610,7 +680,9 @@ async function deposit_referral_bonus(tx, tx_hash) {
   let from_bonus = user_account.account_owner
     ? user_account.account_owner
     : user_account.address;
-  let account_type_uni_from = await global_helper.get_type_by_address(from_bonus);
+  let account_type_uni_from = await global_helper.get_type_by_address(
+    from_bonus
+  );
   let user_id = await global_helper.get_account_by_address(from_bonus);
   if (
     referral_options.object_value.referral_activated == "all" ||
@@ -626,7 +698,7 @@ async function deposit_referral_bonus(tx, tx_hash) {
         referral_options,
         tx_hash,
         account_type_uni_from,
-        tx,
+        tx
       );
       resp_data.push({ uni: uni_tx });
     } else {
@@ -647,7 +719,7 @@ async function deposit_referral_bonus(tx, tx_hash) {
         referral_options,
         tx_hash,
         account_type_uni_from,
-        tx,
+        tx
       );
 
       resp_data.push({ binary: binary_tx });
@@ -664,7 +736,7 @@ async function send_uni_referral_transaction(
   referral_options,
   tx_hash,
   account_type_uni_from,
-  tx,
+  tx
 ) {
   let user_uni_referral = await referral_links.aggregate([
     {
@@ -711,7 +783,7 @@ async function send_uni_referral_transaction(
     if (tx_save_uni) {
       await accounts.findOneAndUpdate(
         { account_owner: to_address, account_category: "system" },
-        { $inc: { balance: tx_amount } },
+        { $inc: { balance: tx_amount } }
       );
     }
   }
@@ -735,7 +807,7 @@ async function send_binary_referral_transaction(
   referral_options,
   tx_hash,
   account_type_uni_from,
-  tx,
+  tx
 ) {
   let binary_bonus_txs = [];
   for (let i = 0; i < user_has_ref_binary.length; i++) {
@@ -760,9 +832,12 @@ async function send_binary_referral_transaction(
     let to_address = user_binary_referral[0]?.account_id?.address;
     let already_taken_bonus = await check_user_bonus_maximum(
       to_address,
-      "referral_bonus_binary_level_" + (i + 1),
+      "referral_bonus_binary_level_" + (i + 1)
     );
-    if (already_taken_bonus + tx_amount <= referral_options?.object_value[lba]) {
+    if (
+      already_taken_bonus + tx_amount <=
+      referral_options?.object_value[lba]
+    ) {
       let tx_hash_generated = global_helper.make_hash();
       if (tx.to != to_address) {
         let to_system = await accounts.findOne({
@@ -791,7 +866,7 @@ async function send_binary_referral_transaction(
         if (tx_save_binary) {
           await accounts.findOneAndUpdate(
             { account_owner: to_address, account_category: "system" },
-            { $inc: { balance: tx_amount } },
+            { $inc: { balance: tx_amount } }
           );
           binary_bonus_txs.push(tx_save_binary);
         }
@@ -816,10 +891,18 @@ async function get_tx_type(tx_type) {
 
 async function pending_deposit_transaction(req, res) {
   try {
-    let { from, amount, amountTransferedFrom, receivePaymentAddress, startDate } =
-      req.body;
+    let {
+      from,
+      amount,
+      amountTransferedFrom,
+      receivePaymentAddress,
+      startDate,
+    } = req.body;
 
-    if (!from) return res.status(400).json(main_helper.error_message("from is required"));
+    if (!from)
+      return res
+        .status(400)
+        .json(main_helper.error_message("from is required"));
     from = from.toLowerCase();
 
     const tx_hash = global_helper.make_hash();
@@ -842,20 +925,29 @@ async function pending_deposit_transaction(req, res) {
 
     res.status(200).send({ success: true, transaction });
   } catch (e) {
-    return res.status(500).send({ success: false, message: "something went wrong" });
+    return res
+      .status(500)
+      .send({ success: false, message: "something went wrong" });
   }
 }
 
 async function coinbase_deposit_transaction(req, res) {
   try {
     let { from, amount } = req.body;
-    if (!from) return res.status(400).json(main_helper.error_message("from is required"));
+    if (!from)
+      return res
+        .status(400)
+        .json(main_helper.error_message("from is required"));
     from = from.toLowerCase();
     const tx_hash = global_helper.make_hash();
+    let account_main = await accounts.findOne({
+      account_owner: from,
+      account_category: "system",
+    });
 
     await transactions.create({
-      from,
-      to: from,
+      from: account_main.account_owner,
+      to: account_main.address,
       amount,
       tx_hash,
       tx_type: "deposit",
@@ -910,7 +1002,9 @@ async function coinbase_deposit_transaction(req, res) {
       })
       .catch((error) => {
         console.log(error?.response);
-        res.status(500).send({ success: false, message: "something went wrong" });
+        res
+          .status(500)
+          .send({ success: false, message: "something went wrong" });
       });
   } catch (e) {
     console.log(e);
@@ -927,7 +1021,7 @@ async function create_global_option(req, res) {
     if (key.data) {
       return main_helper.error_response(
         res,
-        main_helper.error_message("global option by that key already exists"),
+        main_helper.error_message("global option by that key already exists")
       );
     }
 
@@ -976,7 +1070,7 @@ async function update_options(req, res) {
     let result = await options.findOneAndUpdate(
       { key: type },
       { $set: updateObj },
-      { new: true },
+      { new: true }
     );
 
     return res.status(200).json({
@@ -1002,11 +1096,13 @@ async function coinbase_webhooks(req, res) {
     const verify = Webhook.verifySigHeader(
       req.rawBody,
       req.headers["x-cc-webhook-signature"],
-      process.env.COINBASE_WEBHOOK_SECRET,
+      process.env.COINBASE_WEBHOOK_SECRET
     );
 
     if (!verify) {
-      return res.status(400).send({ success: false, message: "invalid signature" });
+      return res
+        .status(400)
+        .send({ success: false, message: "invalid signature" });
     }
 
     const event = req.body.event;
@@ -1016,7 +1112,7 @@ async function coinbase_webhooks(req, res) {
     if (event.type === "charge:confired") {
       await transactions.findOneAndUpdate(
         { tx_hash: metadata.tx_hash },
-        { tx_status: "paid", amount: Number(amount) },
+        { tx_status: "paid", amount: Number(amount) }
       );
     }
 
@@ -1025,7 +1121,10 @@ async function coinbase_webhooks(req, res) {
       try {
         const contract = new web3.eth.Contract(minABI, tokenAddress);
         const tokenAmountInWei = web3.utils.toWei(amount, "ether");
-        const transfer = contract.methods.transfer(metadata?.address, tokenAmountInWei);
+        const transfer = contract.methods.transfer(
+          metadata?.address,
+          tokenAmountInWei
+        );
 
         const encodedABI = transfer.encodeABI();
         const tx = {
@@ -1047,12 +1146,12 @@ async function coinbase_webhooks(req, res) {
                 .on("receipt", async () => {
                   await transactions.findOneAndUpdate(
                     { tx_hash: metadata.tx_hash },
-                    { tx_status: "canceled" },
+                    { tx_status: "canceled" }
                   );
                 })
                 .on("error", console.log);
             }
-          },
+          }
         );
       } catch (e) {
         console.log(e);
@@ -1067,12 +1166,17 @@ async function get_transaction_by_hash(req, res) {
   try {
     let = { hash } = req.body;
 
-    if (!hash) return res.status(400).json(main_helper.error_message("hash is required"));
+    if (!hash)
+      return res
+        .status(400)
+        .json(main_helper.error_message("hash is required"));
 
     const transaction = await transactions.findOne({ tx_hash: hash });
 
     if (!transaction)
-      return res.status(200).json(main_helper.error_message("transaction not found"));
+      return res
+        .status(200)
+        .json(main_helper.error_message("transaction not found"));
 
     return res.status(200).send({ success: true, transaction });
   } catch (e) {}
@@ -1111,7 +1215,9 @@ async function deliver_amount_test(req, res) {
     return res.status(200).send({ success: true, message: "success" });
   } catch (e) {
     console.log(e);
-    return res.status(500).send({ success: false, message: "something went wrong" });
+    return res
+      .status(500)
+      .send({ success: false, message: "something went wrong" });
   }
 }
 
