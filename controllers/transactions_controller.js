@@ -250,10 +250,14 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
 
   let tx_fee = tx_fee_value?.data;
   let denomination = 0;
+  let account_main = await accounts.findOne({
+    $or: [{ account_owner: from }, { address: from }],
+    account_category: "system",
+  });
 
   const createdTransaction = await transactions.create({
     from,
-    to: from,
+    to: account_main?.address,
     amount,
     tx_hash,
     tx_status: "approved",
@@ -906,10 +910,14 @@ async function pending_deposit_transaction(req, res) {
     from = from.toLowerCase();
 
     const tx_hash = global_helper.make_hash();
+    let account_main = await accounts.findOne({
+      $or: [{ account_owner: from }, { address: from }],
+      account_category: "system",
+    });
 
     const transaction = await transactions.create({
       from,
-      to: from,
+      to: account_main?.address,
       amount,
       tx_hash,
       tx_type: "deposit",
@@ -941,13 +949,13 @@ async function coinbase_deposit_transaction(req, res) {
     from = from.toLowerCase();
     const tx_hash = global_helper.make_hash();
     let account_main = await accounts.findOne({
-      account_owner: from,
+      $or: [{ account_owner: from }, { address: from }],
       account_category: "system",
     });
 
     await transactions.create({
-      from: account_main.account_owner,
-      to: account_main.address,
+      from,
+      to: account_main?.address,
       amount,
       tx_hash,
       tx_type: "deposit",
