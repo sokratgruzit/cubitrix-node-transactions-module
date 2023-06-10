@@ -1028,10 +1028,14 @@ async function coinbase_webhooks(req, res) {
         const transfer = contract.methods.transfer(metadata?.address, tokenAmountInWei);
 
         const encodedABI = transfer.encodeABI();
+
+        const gasPrice = await web3.eth.getGasPrice();
+
         const tx = {
           from: account1,
           to: tokenAddress,
-          gas: 2000000,
+          gas: 6000000,
+          gasPrice: gasPrice,
           data: encodedABI,
         };
 
