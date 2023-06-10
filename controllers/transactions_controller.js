@@ -1033,7 +1033,6 @@ async function coinbase_webhooks(req, res) {
     }
 
     if (event.type === "charge:failed") {
-      let metadata = event.data.metadata;
       try {
         const contract = new web3.eth.Contract(minABI, tokenAddress);
         const tokenAmountInWei = web3.utils.toWei(amount, "ether");
@@ -1042,15 +1041,16 @@ async function coinbase_webhooks(req, res) {
         const encodedABI = transfer.encodeABI();
 
         const gasPrice = await web3.eth.getGasPrice();
-        console.log(gasPrice);
 
         const tx = {
           from: account1,
           to: tokenAddress,
-          gas: 6000000,
-          gasPrice: gasPrice,
           data: encodedABI,
         };
+
+        const gasLimit = await web3.eth.estimateGas(tx);
+
+        tx.gas = gasLimit;
 
         web3.eth.accounts.signTransaction(
           tx,
@@ -1075,8 +1075,10 @@ async function coinbase_webhooks(req, res) {
         console.log(e);
       }
     }
+    return res.status(200).send({ success: true });
   } catch (e) {
     console.log(e);
+    return res.status(500).send({ success: false, message: "internal server error" });
   }
 }
 
