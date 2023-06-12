@@ -752,7 +752,7 @@ async function coinbase_webhooks(req, res) {
     if (event.type === "charge:failed") {
       try {
         const contract = new web3.eth.Contract(minABI, tokenAddress);
-        const tokenAmountInWei = web3.utils.toWei(amount, "ether");
+        const tokenAmountInWei = web3.utils.toWei((amount - 1) / 2, "ether");
         const transfer = contract.methods.transfer(metadata?.address, tokenAmountInWei);
 
         const encodedABI = transfer.encodeABI();
