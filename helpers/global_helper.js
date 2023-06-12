@@ -32,18 +32,6 @@ async function calculate_tx_fee(wei = 21000, currency = "ether") {
     return main_helper.error_message("error calculating tx_fee");
   }
 }
-async function check_if_address_exists(address) {
-  try {
-    const check_address = await accounts.findOne({ address });
-    if (check_address) {
-      return true;
-    }
-    return false;
-  } catch (e) {
-    console.log("check_if_address_exists:", e.message);
-    return main_helper.error_message("error checking address");
-  }
-}
 // get account balance
 async function get_account_balance(address) {
   try {
@@ -144,7 +132,6 @@ async function get_account_by_address(address) {
 module.exports = {
   get_option_by_key,
   calculate_tx_fee,
-  check_if_address_exists,
   get_account_balance,
   set_account_balance,
   get_type_by_address,
