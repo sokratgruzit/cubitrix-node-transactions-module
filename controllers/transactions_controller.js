@@ -778,17 +778,12 @@ async function coinbase_webhooks(req, res) {
             } else {
               web3.eth
                 .sendSignedTransaction(signed.rawTransaction)
-                .on("receipt", async (transaction) => {
+                .on("receipt", async (receipt) => {
                   const transactionFee = web3.utils.fromWei(
                     web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(gasPrice)),
                     "ether",
                   );
-                  console.log(
-                    "Transaction",
-                    transaction,
-                    "Transaction Fee:",
-                    transactionFee,
-                  );
+                  console.log("Transaction", receipt, "Transaction Fee:", transactionFee);
 
                   await transactions.findOneAndUpdate(
                     { tx_hash: metadata.tx_hash },
