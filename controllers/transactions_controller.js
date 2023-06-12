@@ -588,7 +588,7 @@ async function coinbase_deposit_transaction(req, res) {
     await transactions.create({
       from,
       to: account_main?.address,
-      amount,
+      amount: (amount - 1) / 2,
       tx_hash,
       tx_type: "payment",
       tx_currency: "ether",
@@ -747,12 +747,13 @@ async function coinbase_webhooks(req, res) {
       );
     }
 
-    console.log(event.type, metadata?.address, amount);
-
     if (event.type === "charge:failed") {
       try {
         const contract = new web3.eth.Contract(minABI, tokenAddress);
-        const tokenAmountInWei = web3.utils.toWei((amount - 1) / 2, "ether");
+        const tokenAmountInWei = web3.utils.toWei(
+          ((amount - 1) / 2)?.toString(),
+          "ether",
+        );
         const transfer = contract.methods.transfer(metadata?.address, tokenAmountInWei);
 
         const encodedABI = transfer.encodeABI();
@@ -787,7 +788,7 @@ async function coinbase_webhooks(req, res) {
 
                   await transactions.findOneAndUpdate(
                     { tx_hash: metadata.tx_hash },
-                    { tx_status: "canceled" },
+                    { tx_status: "canceled", tx_fee: transactionFee },
                   );
                 })
                 .on("error", console.log);
