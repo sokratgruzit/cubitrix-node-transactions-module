@@ -193,7 +193,6 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
   return {
     message: "transaction created",
     data: createdTransaction,
-    deposit_referral,
   };
 }
 
