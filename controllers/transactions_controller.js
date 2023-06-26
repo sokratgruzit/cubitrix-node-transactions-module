@@ -174,7 +174,7 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
   let denomination = 0;
   let account_main = await accounts.findOne({
     $or: [{ account_owner: from }, { address: from }],
-    account_category: "system",
+    account_category: "main",
   });
 
   const createdTransaction = await transactions.create({
@@ -189,8 +189,6 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
     tx_fee_currency,
     tx_currency,
   });
-
-  const deposit_referral = await deposit_referral_bonus(createdTransaction, tx_hash);
 
   return {
     message: "transaction created",
@@ -316,67 +314,6 @@ async function change_balance(from, to, amount, fee) {
   }
 }
 
-// Referrak Deposit Bonus
-async function deposit_referral_bonus(tx, tx_hash) {
-  let referral_options = await global_helper.get_option_by_key("referral_options");
-  referral_options = referral_options?.data;
-  if (referral_options.object_value.referral_activated == "none") {
-    return false;
-  }
-  let user_account = await accounts.findOne({ address: tx.from });
-  let resp_data = [];
-  let from_bonus = user_account.account_owner
-    ? user_account.account_owner
-    : user_account.address;
-  let account_type_uni_from = await global_helper.get_type_by_address(from_bonus);
-  let user_id = await global_helper.get_account_by_address(from_bonus);
-  if (
-    referral_options.object_value.referral_activated == "all" ||
-    referral_options.object_value.referral_activated == "uni"
-  ) {
-    let user_has_ref_uni = await referral_uni_users.findOne({
-      user_id,
-    });
-
-    if (user_has_ref_uni) {
-      let uni_tx = await send_uni_referral_transaction(
-        user_has_ref_uni,
-        referral_options,
-        tx_hash,
-        account_type_uni_from,
-        tx,
-      );
-      resp_data.push({ uni: uni_tx });
-    } else {
-      resp_data.push({ uni: null });
-    }
-  }
-  if (
-    referral_options.object_value.referral_activated == "all" ||
-    referral_options.object_value.referral_activated == "binary"
-  ) {
-    let user_has_ref_binary = await referral_binary_users.find({
-      user_id,
-    });
-
-    if (user_has_ref_binary.length > 0) {
-      let binary_tx = await send_binary_referral_transaction(
-        user_has_ref_binary,
-        referral_options,
-        tx_hash,
-        account_type_uni_from,
-        tx,
-      );
-
-      resp_data.push({ binary: binary_tx });
-    } else {
-      resp_data.push({ binary: null });
-    }
-  }
-
-  return resp_data;
-}
-
 // Referral Uni Transaction
 async function send_uni_referral_transaction(
   user_has_ref_uni,
@@ -404,13 +341,13 @@ async function send_uni_referral_transaction(
   let to_address = user_uni_referral[0]?.account_id?.address;
   let tx_hash_generated = global_helper.make_hash();
   if (tx.to != to_address) {
-    let to_system = await accounts.findOne({
+    let to_main = await accounts.findOne({
       $or: [{ account_owner: to_address }, { address: to_address }],
-      account_category: "system",
+      account_category: "main",
     });
     let tx_save_uni = await transactions.create({
       tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
-      to: to_system?.address,
+      to: to_main?.address,
       amount: tx_amount,
       from: tx.to,
       tx_status: "approved",
@@ -429,7 +366,7 @@ async function send_uni_referral_transaction(
     });
     if (tx_save_uni) {
       await accounts.findOneAndUpdate(
-        { account_owner: to_address, account_category: "system" },
+        { account_owner: to_address, account_category: "main" },
         { $inc: { balance: tx_amount } },
       );
     }
@@ -486,13 +423,13 @@ async function send_binary_referral_transaction(
     if (already_taken_bonus + tx_amount <= referral_options?.object_value[lba]) {
       let tx_hash_generated = global_helper.make_hash();
       if (tx.to != to_address) {
-        let to_system = await accounts.findOne({
+        let to_main = await accounts.findOne({
           $or: [{ account_owner: to_address }, { address: to_address }],
-          account_category: "system",
+          account_category: "main",
         });
         let tx_save_binary = await transactions.create({
           tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
-          to: to_system?.address,
+          to: to_main?.address,
           amount: tx_amount,
           from: tx.to,
           tx_status: "approved",
@@ -511,7 +448,7 @@ async function send_binary_referral_transaction(
         });
         if (tx_save_binary) {
           await accounts.findOneAndUpdate(
-            { account_owner: to_address, account_category: "system" },
+            { account_owner: to_address, account_category: "main" },
             { $inc: { balance: tx_amount } },
           );
           binary_bonus_txs.push(tx_save_binary);
@@ -548,7 +485,7 @@ async function pending_deposit_transaction(req, res) {
     const tx_hash = global_helper.make_hash();
     let account_main = await accounts.findOne({
       $or: [{ account_owner: from }, { address: from }],
-      account_category: "system",
+      account_category: "main",
     });
 
     const transaction = await transactions.create({
@@ -582,7 +519,7 @@ async function coinbase_deposit_transaction(req, res) {
     const tx_hash = global_helper.make_hash();
     let account_main = await accounts.findOne({
       $or: [{ account_owner: from }, { address: from }],
-      account_category: "system",
+      account_category: "main",
     });
 
     await transactions.create({
