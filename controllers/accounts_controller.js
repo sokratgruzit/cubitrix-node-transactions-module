@@ -4,7 +4,7 @@ const main_helper = require("../helpers/index");
 // get account balance
 async function get_account_balance(address) {
   try {
-    let balance = await accounts.find({ address, account_category: "system" });
+    let balance = await accounts.find({ address, account_category: "main" });
     if (balance) {
       return main_helper.return_data(true, balance.balance);
     }
@@ -14,7 +14,7 @@ async function get_account_balance(address) {
     return main_helper.error_message("error");
   }
 }
-
+y;
 module.exports = {
   get_account_balance,
 };
