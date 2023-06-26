@@ -158,42 +158,47 @@ async function get_transactions_of_user(req, res) {
 
 // Create Manual Deposit Transaction
 async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
-  from = from.toLowerCase();
-  amount = parseFloat(amount);
-  let tx_hash_generated = global_helper.make_hash();
+  try {
+    from = from.toLowerCase();
+    amount = parseFloat(amount);
+    let tx_hash_generated = global_helper.make_hash();
 
-  let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
-  let tx_type_db = await get_tx_type(tx_type);
-  let tx_global_currency = await global_helper.get_option_by_key("global_currency");
-  let tx_fee_currency = tx_global_currency?.data?.value;
-  let tx_wei = tx_type_db?.data?.tx_fee;
-  let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
+    let tx_type_db = await get_tx_type(tx_type);
+    let tx_global_currency = await global_helper.get_option_by_key("global_currency");
+    let tx_fee_currency = tx_global_currency?.data?.value;
+    let tx_wei = tx_type_db?.data?.tx_fee;
+    let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
 
-  let tx_fee = tx_fee_value?.data;
-  let denomination = 0;
-  let account_main = await accounts.findOne({
-    $or: [{ account_owner: from }, { address: from }],
-    account_category: "main",
-  });
+    let tx_fee = tx_fee_value?.data;
+    let denomination = 0;
+    let account_main = await accounts.findOne({
+      account_owner: from,
+      account_category: "main",
+    });
 
-  const createdTransaction = await transactions.create({
-    from,
-    to: account_main?.address,
-    amount,
-    tx_hash,
-    tx_status: "approved",
-    tx_type,
-    denomination,
-    tx_fee,
-    tx_fee_currency,
-    tx_currency,
-  });
+    const createdTransaction = await transactions.create({
+      from,
+      to: account_main?.address,
+      amount,
+      tx_hash,
+      tx_status: "approved",
+      tx_type,
+      denomination,
+      tx_fee,
+      tx_fee_currency,
+      tx_currency,
+    });
 
-  return {
-    message: "transaction created",
-    data: createdTransaction,
-  };
+    return {
+      message: "transaction created",
+      data: createdTransaction,
+    };
+  } catch (e) {
+    console.log(e, "deposit transaction error");
+    return null;
+  }
 }
 
 // Make Transfer
