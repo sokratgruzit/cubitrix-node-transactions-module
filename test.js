@@ -32,9 +32,9 @@ app.use("/api/transactions", transactions);
 // if(process.env.STAKING === 'true') app.use('/api/staking', staking);
 
 // //test route
-// app.get("/test", (req, res) => {
-//    res.send("server is working");
-// });
+app.get("/test", (req, res) => {
+  res.send("server is working");
+});
 
 //static path
 const root = require("path").join(__dirname, "front", "build");
