@@ -261,37 +261,33 @@ async function make_transfer(req, res) {
       return main_helper.error_response(res, tx_fee_value.message);
     }
 
-    // console.log(from, to, amount, tx_fee, account_from, account_to);
-
     let amount_with_fee = parseFloat(amount) + parseFloat(tx_fee);
 
-    console.log(amount_with_fee, account_from.balance);
-
     if (account_from.balance >= amount_with_fee) {
-      const updatedAcc = await accounts.findOneAndUpdate(
-        { account_owner: from, account_category: "main" },
-        { $inc: { balance: 0 - amount_with_fee } },
-        { new: true },
-      );
-
-      const updatedAcc2 = await accounts.findOneAndUpdate(
-        { account_owner: to, account_category: "main" },
-        { $inc: { balance: amount } },
-        { new: true },
-      );
-
-      const createdTransaction = await transactions.create({
-        from,
-        to,
-        amount,
-        tx_hash,
-        tx_status: "approved",
-        tx_type,
-        denomination,
-        tx_fee,
-        tx_fee_currency,
-        tx_currency,
-      });
+      const [updatedAcc, createdTransaction] = await Promise.all([
+        accounts.findOneAndUpdate(
+          { account_owner: from, account_category: "main" },
+          { $inc: { balance: 0 - amount_with_fee } },
+          { new: true },
+        ),
+        transactions.create({
+          from,
+          to,
+          amount,
+          tx_hash,
+          tx_status: "approved",
+          tx_type,
+          denomination,
+          tx_fee,
+          tx_fee_currency,
+          tx_currency,
+        }),
+        accounts.findOneAndUpdate(
+          { account_owner: to, account_category: "main" },
+          { $inc: { balance: amount } },
+          { new: true },
+        ),
+      ]);
 
       return main_helper.success_response(res, {
         message: "successfull transaction",
