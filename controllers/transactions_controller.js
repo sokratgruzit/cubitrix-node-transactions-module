@@ -229,11 +229,13 @@ async function make_transfer(req, res) {
       account_category: "main",
     });
 
+    console.log(to, account_to);
+
     let account_from = await accounts.findOne({
       account_owner: from,
       account_category: "main",
     });
-    if (!account_to && !account_from) {
+    if (!account_to || !account_from) {
       return main_helper.error_response(
         res,
         "we dont have such address registered in our system.",
