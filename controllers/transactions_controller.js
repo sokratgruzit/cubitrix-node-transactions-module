@@ -206,6 +206,7 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
 async function make_transfer(req, res) {
   try {
     let { from, to, amount, tx_currency } = req.body;
+
     let tx_type = "transfer";
     if (!from && !to && !amount && !tx_type && !tx_currency) {
       return main_helper.error_response(res, "please provide all necessary values");
@@ -224,11 +225,13 @@ async function make_transfer(req, res) {
     let tx_fee = tx_fee_value.data;
     let denomination = 0;
     let account_to = await accounts.findOne({
-      address: to,
+      account_owner: to,
+      account_category: "main",
     });
 
     let account_from = await accounts.findOne({
-      address: from,
+      account_owner: from,
+      account_category: "main",
     });
     if (!account_to && !account_from) {
       return main_helper.error_response(
@@ -237,12 +240,12 @@ async function make_transfer(req, res) {
       );
     }
 
-    if (account_from.active === false) {
-      return main_helper.error_response(res, "Cannot transfer from this account");
-    }
-    if (account_to.active === false) {
-      return main_helper.error_response(res, "Cannot transfer to this account");
-    }
+    // if (account_from.active === false) {
+    //   return main_helper.error_response(res, "Cannot transfer from this account");
+    // }
+    // if (account_to.active === false) {
+    //   return main_helper.error_response(res, "Cannot transfer to this account");
+    // }
 
     if (!(tx_type_db.success && tx_global_currency.success)) {
       return main_helper.error_response(
@@ -257,65 +260,49 @@ async function make_transfer(req, res) {
     if (!tx_fee_value.success) {
       return main_helper.error_response(res, tx_fee_value.message);
     }
-    let tx_save = await transactions.create({
-      from,
-      to,
-      amount,
-      tx_hash,
-      tx_status: "pending",
-      tx_type,
-      denomination,
-      tx_fee,
-      tx_fee_currency,
-      tx_currency,
-    });
-    if (tx_save) {
-      let balance_change = await change_balance(from, to, amount, tx_fee);
-      if (balance_change.status) {
-        return main_helper.success_response(res, {
-          message: "successfull transaction",
-          data: tx_save,
-        });
-      } else {
-        return main_helper.error_response(res, {
-          message: "error saving transaction",
-        });
-      }
+
+    // console.log(from, to, amount, tx_fee, account_from, account_to);
+
+    let amount_with_fee = parseFloat(amount) + parseFloat(tx_fee);
+
+    console.log(amount_with_fee, account_from.balance);
+
+    if (account_from.balance >= amount_with_fee) {
+      const updatedAcc = await accounts.findOneAndUpdate(
+        { account_owner: from, account_category: "main" },
+        { $inc: { balance: 0 - amount_with_fee } },
+        { new: true },
+      );
+
+      const updatedAcc2 = await accounts.findOneAndUpdate(
+        { account_owner: to, account_category: "main" },
+        { $inc: { balance: amount } },
+        { new: true },
+      );
+
+      const createdTransaction = await transactions.create({
+        from,
+        to,
+        amount,
+        tx_hash,
+        tx_status: "approved",
+        tx_type,
+        denomination,
+        tx_fee,
+        tx_fee_currency,
+        tx_currency,
+      });
+
+      return main_helper.success_response(res, {
+        message: "successfull transaction",
+        data: { createdTransaction, updatedAcc },
+      });
+    } else {
+      return main_helper.error_response(res, "Insufficient funds");
     }
-    return main_helper.error_response(res, {
-      message: "error saving transaction",
-    });
   } catch (e) {
     console.log(e.message);
     return main_helper.error_response(res, "error saving transaction");
-  }
-}
-
-// Change Balance Transfer Style
-async function change_balance(from, to, amount, fee) {
-  try {
-    let get_from_account_balance = await global_helper.get_account_balance(from);
-
-    let get_from_account_balance_value = parseFloat(get_from_account_balance?.data);
-
-    let amount_with_fee = parseFloat(amount) + parseFloat(fee);
-
-    if (get_from_account_balance_value >= amount_with_fee) {
-      await accounts.findOneAndUpdate(
-        { address: to },
-        { $inc: { balance: 0 - amount_with_fee } },
-      );
-
-      await accounts.findOneAndUpdate({ address: to }, { $inc: { balance: amount } });
-
-      return { status: true, message: "Balance Updated" };
-    } else {
-      return { status: false, message: "Insuficcient funds" };
-    }
-  } catch (e) {
-    console.log(e.message);
-
-    return { status: false, message: "Errror" };
   }
 }
 
@@ -855,12 +842,10 @@ async function direct_deposit(req, res) {
       );
       return res.status(200).json({ success: true, updatedAccount });
     } else {
-      return res
-        .status(200)
-        .json({
-          success: true,
-          message: "This transaction does not involve a transfer of custom tokens.",
-        });
+      return res.status(200).json({
+        success: true,
+        message: "This transaction does not involve a transfer of custom tokens.",
+      });
     }
   } catch (e) {
     console.error(e);

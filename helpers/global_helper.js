@@ -33,25 +33,14 @@ async function calculate_tx_fee(wei = 21000, currency = "ether") {
   }
 }
 // get account balance
-async function get_account_balance(address) {
-  try {
-    let balance = await accounts.findOne({ address: address });
-    if (balance) {
-      return main_helper.return_data(true, balance.balance);
-    }
-    return main_helper.error_message("error");
-  } catch (e) {
-    console.log(e.message);
-    return main_helper.error_message("error");
-  }
-}
+
 // set account balance
 async function set_account_balance(address, balance) {
   try {
     let balance_update = await accounts.findOneAndUpdate(
       { address: address },
       { $inc: { balance: parseFloat(balance) } },
-      { new: true }
+      { new: true },
     );
     if (balance_update) {
       return main_helper.success_message("balance updated");
@@ -102,8 +91,7 @@ async function get_type_by_name(address) {
 }
 function make_hash(length = 66) {
   let result = "";
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const charactersLength = characters.length;
   let counter = 0;
   while (counter < length) {
@@ -115,9 +103,7 @@ function make_hash(length = 66) {
 // get account type by name
 async function get_account_by_address(address) {
   try {
-    let account_address = await account_meta
-      .findOne({ address: address })
-      .exec();
+    let account_address = await account_meta.findOne({ address: address }).exec();
 
     if (account_address) {
       let type_id = account_address._id;
@@ -132,7 +118,6 @@ async function get_account_by_address(address) {
 module.exports = {
   get_option_by_key,
   calculate_tx_fee,
-  get_account_balance,
   set_account_balance,
   get_type_by_address,
   make_hash,
