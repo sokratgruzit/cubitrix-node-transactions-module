@@ -216,7 +216,15 @@ async function make_transfer(req, res) {
       tx_type = "transfer",
     } = req.body;
 
-    if (!from && !to && !amount && !tx_type && !tx_currency) {
+    if (
+      !from &&
+      !to &&
+      !amount &&
+      !tx_type &&
+      !tx_currency &&
+      !account_category_to &&
+      !account_category_from
+    ) {
       return main_helper.error_response(res, "please provide all necessary values");
     }
     if (from) from = from.toLowerCase();
@@ -233,12 +241,16 @@ async function make_transfer(req, res) {
     let tx_fee = tx_fee_value.data;
     let denomination = 0;
 
-    if (to === from && account_category_to !== "main") {
+    if (to === from && account_category_to === account_category_from) {
+      return main_helper.error_response(res, "You can not trasnfer to same account");
+    }
+    if (to !== from && account_category_to !== "main") {
       return main_helper.error_response(
         res,
         "You can only trasnfer to recepient's main account",
       );
     }
+
     let account_to = await accounts.findOne({
       account_owner: to,
       account_category: account_category_to,
