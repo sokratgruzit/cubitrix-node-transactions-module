@@ -34,61 +34,6 @@ async function calculate_tx_fee(wei = 21000, currency = "ether") {
 }
 // get account balance
 
-// set account balance
-async function set_account_balance(address, balance) {
-  try {
-    let balance_update = await accounts.findOneAndUpdate(
-      { address: address },
-      { $inc: { balance: parseFloat(balance) } },
-      { new: true },
-    );
-    if (balance_update) {
-      return main_helper.success_message("balance updated");
-    }
-    return main_helper.error_message("error");
-  } catch (e) {
-    console.log(e.message);
-    return main_helper.error_message("error");
-  }
-}
-// get account type by address
-async function get_type_by_address(address) {
-  try {
-    let type = await accounts.findOne({ address: address }).exec();
-
-    if (type) {
-      let type_id = type.account_type_id;
-      return type_id.toString();
-    }
-    /*else {
-      await account_types.create({ name: type_name }).exec();
-      type = await account_types.findOne({ name: type_name }).exec();
-      return type._id;
-    }*/
-    return 0;
-  } catch (e) {
-    return main_helper.error_message(e.message);
-  }
-}
-// get account type by name
-async function get_type_by_name(address) {
-  try {
-    let type = await accounts.findOne({ name: name }).exec();
-
-    if (type) {
-      let type_id = type.account_type_id;
-      return type_id.toString();
-    }
-    /*else {
-      await account_types.create({ name: type_name }).exec();
-      type = await account_types.findOne({ name: type_name }).exec();
-      return type._id;
-    }*/
-    return 0;
-  } catch (e) {
-    return main_helper.error_message(e.message);
-  }
-}
 function make_hash(length = 66) {
   let result = "";
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -118,8 +63,6 @@ async function get_account_by_address(address) {
 module.exports = {
   get_option_by_key,
   calculate_tx_fee,
-  set_account_balance,
-  get_type_by_address,
   make_hash,
   get_account_by_address,
 };
