@@ -10,7 +10,7 @@ const {
   deposit_requests,
   options,
 } = require("@cubitrix/models");
-const TradeTransaction = require('../testModel');
+const TradeTransaction = require("../testModel");
 
 require("dotenv").config();
 
@@ -206,9 +206,16 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
 // Make Transfer
 async function make_transfer(req, res) {
   try {
-    let { from, to, amount, tx_currency } = req.body;
+    let {
+      from,
+      to,
+      amount,
+      tx_currency,
+      account_category_to,
+      account_category_from,
+      tx_type = "transfer",
+    } = req.body;
 
-    let tx_type = "transfer";
     if (!from && !to && !amount && !tx_type && !tx_currency) {
       return main_helper.error_response(res, "please provide all necessary values");
     }
@@ -225,14 +232,21 @@ async function make_transfer(req, res) {
     let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
     let tx_fee = tx_fee_value.data;
     let denomination = 0;
+
+    if (to === from && account_category_to !== "main") {
+      return main_helper.error_response(
+        res,
+        "You can only trasnfer to recepient's main account",
+      );
+    }
     let account_to = await accounts.findOne({
       account_owner: to,
-      account_category: "main",
+      account_category: account_category_to,
     });
 
     let account_from = await accounts.findOne({
       account_owner: from,
-      account_category: "main",
+      account_category: account_category_from,
     });
     if (!account_to || !account_from) {
       return main_helper.error_response(
@@ -867,25 +881,18 @@ async function get_transaction_by_hash(req, res) {
 }
 
 async function create_trade_collateral_transaction(req, res) {
-  const { 
-    borrowed_address, 
-    collateral, 
-    leverage, 
-    rate, 
-    currency, 
-    price,
-    returned
-  } = req.body;
+  const { borrowed_address, collateral, leverage, rate, currency, price, returned } =
+    req.body;
 
   let trade_account = await accounts.findOne({
     address: borrowed_address,
-    account_category: "trade"
+    account_category: "trade",
   });
-  
+
   if (trade_account && trade_account.active) {
     let main_account = await accounts.findOne({
       account_owner: trade_account.account_owner,
-      account_category: "main"
+      account_category: "main",
     });
 
     if (main_account.balance > collateral) {
@@ -904,11 +911,11 @@ async function create_trade_collateral_transaction(req, res) {
       const transaction = await TradeTransaction.create({
         borrowed_address,
         collateral,
-        leverage, 
+        leverage,
         rate,
         currency,
         price,
-        returned
+        returned,
       });
 
       if (!transaction)
@@ -916,7 +923,9 @@ async function create_trade_collateral_transaction(req, res) {
 
       return res.status(200).send({ success: true, transaction });
     } else {
-      return res.status(200).json(main_helper.error_message("main account balance is too low"));
+      return res
+        .status(200)
+        .json(main_helper.error_message("main account balance is too low"));
     }
   } else {
     return res.status(200).json(main_helper.error_message("trade account not found"));
@@ -934,5 +943,5 @@ module.exports = {
   get_transaction_by_hash,
   make_transfer,
   direct_deposit,
-  create_trade_collateral_transaction
+  create_trade_collateral_transaction,
 };
