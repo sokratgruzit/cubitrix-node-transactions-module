@@ -30,5 +30,6 @@ router.post("/get_transaction_by_hash", transactions_controller.get_transaction_
 router.post("/make_transfer", transactions_controller.make_transfer);
 
 router.post("/direct_deposit", transactions_controller.direct_deposit);
+router.post("/collateral_transaction", transactions_controller.create_trade_collateral_transaction);
 
 module.exports = router;

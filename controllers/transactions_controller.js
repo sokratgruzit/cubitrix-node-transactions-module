@@ -10,6 +10,7 @@ const {
   deposit_requests,
   options,
 } = require("@cubitrix/models");
+const TradeTransaction = require('../testModel');
 
 require("dotenv").config();
 
@@ -865,6 +866,63 @@ async function get_transaction_by_hash(req, res) {
   } catch (e) {}
 }
 
+async function create_trade_collateral_transaction(req, res) {
+  const { 
+    borrowed_address, 
+    collateral, 
+    leverage, 
+    rate, 
+    currency, 
+    price,
+    returned
+  } = req.body;
+
+  let trade_account = await accounts.findOne({
+    address: borrowed_address,
+    account_category: "trade"
+  });
+  
+  if (trade_account && trade_account.active) {
+    let main_account = await accounts.findOne({
+      account_owner: trade_account.account_owner,
+      account_category: "main"
+    });
+
+    if (main_account.balance > collateral) {
+      await accounts.findOneAndUpdate(
+        { account_owner: trade_account.account_owner, account_category: "main" },
+        { $inc: { balance: -collateral } },
+        { new: true },
+      );
+
+      await accounts.findOneAndUpdate(
+        { address: borrowed_address, account_category: "trade" },
+        { $inc: { balance: +collateral } },
+        { new: true },
+      );
+
+      const transaction = await TradeTransaction.create({
+        borrowed_address,
+        collateral,
+        leverage, 
+        rate,
+        currency,
+        price,
+        returned
+      });
+
+      if (!transaction)
+        return res.status(200).json(main_helper.error_message("transaction not found"));
+
+      return res.status(200).send({ success: true, transaction });
+    } else {
+      return res.status(200).json(main_helper.error_message("main account balance is too low"));
+    }
+  } else {
+    return res.status(200).json(main_helper.error_message("trade account not found"));
+  }
+}
+
 module.exports = {
   create_deposit_transaction,
   pending_deposit_transaction,
@@ -876,4 +934,5 @@ module.exports = {
   get_transaction_by_hash,
   make_transfer,
   direct_deposit,
+  create_trade_collateral_transaction
 };
