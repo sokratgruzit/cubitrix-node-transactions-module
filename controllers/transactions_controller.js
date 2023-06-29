@@ -234,6 +234,7 @@ async function make_transfer(req, res) {
       account_owner: from,
       account_category: "main",
     });
+    
     if (!account_to || !account_from) {
       return main_helper.error_response(
         res,
