@@ -234,6 +234,9 @@ async function make_transfer(req, res) {
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
     let tx_type_db = await get_tx_type(tx_type);
     amount = parseFloat(amount);
+    if (amount <= 0) {
+      return main_helper.error_response(res, "amount must be greater than 0");
+    }
     let tx_global_currency = await global_helper.get_option_by_key("global_currency");
     let tx_fee_currency = tx_global_currency?.data?.value;
     let tx_wei = tx_type_db?.data?.tx_fee;
@@ -293,7 +296,7 @@ async function make_transfer(req, res) {
     if (account_from.balance >= amount_with_fee) {
       const [updatedAcc, createdTransaction] = await Promise.all([
         accounts.findOneAndUpdate(
-          { account_owner: from, account_category: "main" },
+          { account_owner: from, account_category: account_category_from },
           { $inc: { balance: 0 - amount_with_fee } },
           { new: true },
         ),
@@ -310,7 +313,7 @@ async function make_transfer(req, res) {
           tx_currency,
         }),
         accounts.findOneAndUpdate(
-          { account_owner: to, account_category: "main" },
+          { account_owner: to, account_category: account_category_to },
           { $inc: { balance: amount } },
           { new: true },
         ),
