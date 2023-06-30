@@ -270,12 +270,12 @@ async function make_transfer(req, res) {
       );
     }
 
-    // if (account_from.active === false) {
-    //   return main_helper.error_response(res, "Cannot transfer from this account");
-    // }
-    // if (account_to.active === false) {
-    //   return main_helper.error_response(res, "Cannot transfer to this account");
-    // }
+    if (account_from.active === false) {
+      return main_helper.error_response(res, "Cannot transfer from this account");
+    }
+    if (account_to.active === false) {
+      return main_helper.error_response(res, "Cannot transfer to this account");
+    }
 
     if (!(tx_type_db.success && tx_global_currency.success)) {
       return main_helper.error_response(
