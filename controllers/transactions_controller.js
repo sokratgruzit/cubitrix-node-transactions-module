@@ -761,92 +761,19 @@ async function coinbase_webhooks(req, res) {
   }
 }
 
-// async function direct_deposit(req, res) {
-//   try {
-//     let { address, amount } = req.body;
-//     if (!address) {
-//       return res.status(400).json(main_helper.error_message("address is required"));
-//     }
-//     let account_system = await accounts.findOne({
-//       account_owner: address,
-//       account_category: "system"
-//     });
-
-//     if (!account_system) {
-//       return res.status(400).json(main_helper.error_message("account not found"));
-//     }
-
-//   } catch (e) {}
-// }
-
-// async function direct_deposit(req, res) {
-//   try {
-//     let { address, amount } = req.body;
-//     if (!address) {
-//       return res.status(400).json({ error: "address is required" });
-//     }
-
-//     address = address.toLowerCase();
-
-//     // Fetch recipient address from your database or any other source
-
-//     console.log(address);
-//     let account_system = await accounts.findOne({
-//       account_owner: address,
-//       account_category: "system",
-//     });
-
-//     if (!account_system) {
-//       return res.status(400).json({ error: "account not found" });
-//     }
-//     console.log(account_system);
-//     // Construct the transaction object
-//     const txObject = {
-//       from: "0xA3403975861B601aE111b4eeAFbA94060a58d0CA",
-//       to: "0xE72C1054C1900FC6c266feC9bedc178e72793A35",
-//       value: web3.utils.toWei(amount.toString(), "ether"),
-//       gasPrice: web3.utils.toHex(web3.utils.toWei("10", "gwei")),
-//       gasLimit: web3.utils.toHex(21000),
-//     };
-
-//     // Send the transaction to the network
-//     const transaction = await web3.eth.sendTransaction(txObject);
-
-//     // Return the transaction hash to the frontend
-//     res.json({ success: true, transactionHash: transaction.transactionHash });
-
-//     // Monitor the transaction status in the backend
-//     const interval = setInterval(async () => {
-//       const receipt = await web3.eth.getTransactionReceipt(transaction.transactionHash);
-
-//       if (receipt && receipt.status) {
-//         clearInterval(interval);
-//         // Transaction successful
-//         console.log("Transaction confirmed:", receipt);
-//         // You can perform any necessary actions here
-//       } else if (receipt && !receipt.status) {
-//         clearInterval(interval);
-//         // Transaction failed
-//         console.log("Transaction failed:", receipt);
-//         // You can perform any necessary error handling here
-//       }
-//     }, 5000); // Check the transaction status every 5 seconds
-//   } catch (e) {
-//     console.error(e);
-//     res.status(500).json({ error: "An error occurred" });
-//   }
-// }
-
 async function direct_deposit(req, res) {
   try {
     let { address, hash } = req.body;
     if (!address) {
       return res.status(400).json({ error: "address is required" });
     }
+
     address = address.toLowerCase();
 
-    const tx = await web3.eth.getTransaction(hash);
+    let tx_hash_generated = global_helper.make_hash();
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
+    const tx = await web3.eth.getTransaction(hash);
     const inputHex = tx.input;
     const functionSignature = inputHex.slice(0, 10);
     const encodedParameters = inputHex.slice(10);
@@ -860,13 +787,30 @@ async function direct_deposit(req, res) {
       functionSignature === "0xa9059cbb"
     ) {
       const numberOfTokens = decodedParameters["1"];
+      const [updatedAccount] = await Promise.all([
+        accounts.findOneAndUpdate(
+          { account_owner: address, account_category: "main" },
+          { $inc: { balance: numberOfTokens / 10 ** 18 } },
+          { new: true },
+        ),
+        transactions.create({
+          from: address,
+          to: address,
+          amount: numberOfTokens / 10 ** 18,
+          tx_hash,
+          tx_type: "deposit",
+          tx_currency: "ether",
+          tx_status: "pending",
+          tx_options: {
+            method: "direct",
+          },
+        }),
+      ]);
 
-      const updatedAccount = await accounts.findOneAndUpdate(
-        { account_owner: address, account_category: "main" },
-        { $inc: { balance: numberOfTokens / 10 ** 18 } },
-        { new: true },
-      );
-      return res.status(200).json({ success: true, updatedAccount });
+      return main_helper.success_response(res, {
+        message: "successfull transaction",
+        updatedAccount,
+      });
     } else {
       return res.status(200).json({
         success: true,
