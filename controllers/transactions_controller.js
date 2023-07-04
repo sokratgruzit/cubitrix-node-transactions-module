@@ -21,6 +21,7 @@ const Web3 = require("web3");
 const web3 = new Web3("https://data-seed-prebsc-1-s1.binance.org:8545/");
 
 const minABI = require("../abi/WBNB.json");
+const STACK_ABI = require("../abi/stack.json");
 const { decode } = require("jsonwebtoken");
 
 const account1 = "0xA3403975861B601aE111b4eeAFbA94060a58d0CA";
@@ -263,7 +264,7 @@ async function make_transfer(req, res) {
       account_owner: from,
       account_category: account_category_from,
     });
-    
+
     if (!account_to || !account_from) {
       return main_helper.error_response(
         res,
@@ -740,7 +741,6 @@ async function coinbase_webhooks(req, res) {
                     web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(gasPrice)),
                     "ether",
                   );
-                  console.log("Transaction", receipt, "Transaction Fee:", transactionFee);
 
                   await transactions.findOneAndUpdate(
                     { tx_hash: metadata.tx_hash },
@@ -840,6 +840,65 @@ async function get_transaction_by_hash(req, res) {
   } catch (e) {}
 }
 
+async function unstake_transaction(req, res) {
+  try {
+    let { address, index } = req.body;
+
+    if (!address)
+      return res.status(400).json(main_helper.error_message("address is required"));
+
+    if (typeof index !== "number")
+      return res.status(400).json(main_helper.error_message("index is required"));
+
+    address = address.toLowerCase();
+
+    const tokenAddress = "0xd472C9aFa90046d42c00586265A3F62745c927c0"; // Staking contract Address
+    const tokenContract = new web3.eth.Contract(STACK_ABI, tokenAddress);
+    const result = await tokenContract.methods.stakersRecord(address, index).call();
+
+    if (!result.unstaked) {
+      return res.status(400).json(main_helper.error_message("not unstaked yet"));
+    }
+
+    const mainAccount = await accounts.findOne({
+      account_owner: address,
+      account_category: "main",
+    });
+
+    if (!mainAccount) {
+      return res.status(400).json(main_helper.error_message("main account not found"));
+    }
+
+    let tx_hash_generated = global_helper.make_hash();
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+
+    const [updatedAccount] = await Promise.all([
+      accounts.findOneAndUpdate(
+        { account_owner: address, account_category: "main" },
+        { $inc: { balance: 0 - result.amount / 10 ** 18 } },
+        { new: true },
+      ),
+      transactions.create({
+        from: address,
+        to: address,
+        amount: result.amount / 10 ** 18,
+        tx_hash,
+        tx_type: "unstake",
+        tx_currency: "ether",
+        tx_status: "approved",
+        tx_options: {
+          method: "unstake",
+        },
+      }),
+    ]);
+
+    return res.status(200).send({ success: true, updatedAccount, result });
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ error: "An error occurred" });
+  }
+}
+
 module.exports = {
   create_deposit_transaction,
   pending_deposit_transaction,
@@ -850,5 +909,6 @@ module.exports = {
   get_transactions_of_user,
   get_transaction_by_hash,
   make_transfer,
-  direct_deposit
+  direct_deposit,
+  unstake_transaction,
 };
