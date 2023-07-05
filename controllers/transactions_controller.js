@@ -9,7 +9,9 @@ const {
   referral_binary_users,
   deposit_requests,
   options,
+  stakes,
 } = require("@cubitrix/models");
+const moment = require("moment");
 
 require("dotenv").config();
 
@@ -741,6 +743,7 @@ async function coinbase_webhooks(req, res) {
                     web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(gasPrice)),
                     "ether",
                   );
+                  console.log("Transaction", receipt, "Transaction Fee:", transactionFee);
 
                   await transactions.findOneAndUpdate(
                     { tx_hash: metadata.tx_hash },
@@ -898,8 +901,118 @@ async function unstake_transaction(req, res) {
     res.status(500).json({ error: "An error occurred" });
   }
 }
+const uni_comission_count = async (req, res) => {
+  let interval = 20;
+  let comissions = {
+    lvl1: 5,
+    lvl2: 2,
+    lvl3: 1,
+    lvl4: 1,
+    lvl5: 1,
+    lvl6: 1,
+    lvl7: 1,
+    lvl8: 1,
+    lvl9: 1,
+    lvl10: 1,
+  };
+
+  let interval_ago = moment().subtract(interval, "days").startOf("day").valueOf();
+  interval_ago = interval_ago / 1000;
+  console.log(interval_ago, moment().subtract(interval, "days").startOf("day"));
+  const filteredStakes = await stakes.aggregate([
+    {
+      $match: {
+        staketime: { $gte: interval_ago },
+      },
+    },
+    {
+      $group: {
+        _id: "$address",
+        totalAmount: { $sum: "$amount" },
+      },
+    },
+  ]);
+  let addresses_that_staked_this_interval = [];
+  for (let i = 0; i < filteredStakes.length; i++) {
+    addresses_that_staked_this_interval.push(filteredStakes[i]._id);
+  }
+  let comissions_of_addresses = [];
+
+  let referral_addresses = await referral_uni_users.find({
+    user_address: { $in: addresses_that_staked_this_interval },
+  });
+  for (let i = 0; i < filteredStakes.length; i++) {
+    for (let k = 0; k < referral_addresses.length; k++) {
+      if (referral_addresses[k].user_address == filteredStakes[i]._id) {
+        comissions_of_addresses.push({
+          address: referral_addresses[k].user_address,
+          referral_address: referral_addresses[k].referral_address,
+          amount_today: filteredStakes[i].totalAmount,
+          lvl: referral_addresses[k].lvl,
+          percent: comissions["lvl" + referral_addresses[k].lvl],
+          amount_today_reward:
+            (filteredStakes[i].totalAmount *
+              comissions["lvl" + referral_addresses[k].lvl]) /
+            100,
+        });
+      }
+    }
+  }
+
+  let write_tx = [];
+
+  for (let i = 0; i < comissions_of_addresses.length; i++) {
+    let tx_hash_generated = global_helper.make_hash();
+
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+    let from = comissions_of_addresses[i];
+    write_tx.push({
+      from: from.address,
+      to: from.referral_address,
+      amount: from.amount_today_reward,
+      tx_hash,
+      tx_type: "bonus",
+      tx_currency: "ether",
+      tx_status: "confirmed",
+      tx_options: {
+        method: "referral",
+        type: "uni",
+        lvl: from.lvl,
+        percent: from.percent,
+      },
+    });
+  }
+  const result = {};
+
+  for (let i = 0; i < write_tx.length; i++) {
+    const item = write_tx[i];
+    const key = item.to;
+    const value = 0 + item.amount;
+
+    if (result.hasOwnProperty(key)) {
+      result[key] += value;
+    } else {
+      result[key] = value;
+    }
+  }
+  if (result && write_tx) {
+    const transaction = await transactions.insertMany(write_tx);
+    if (transaction) {
+      const keyValueArray = Object.entries(result);
+      for (let i = 0; i < keyValueArray.length; i++) {
+        const [key, value] = keyValueArray[i];
+        let accounts_change = await accounts.findOneAndUpdate(
+          { address: key },
+          { $inc: { balance: value } },
+        );
+      }
+    }
+  }
+  return main_helper.success_response(res, "updated");
+};
 
 module.exports = {
+  uni_comission_count,
   create_deposit_transaction,
   pending_deposit_transaction,
   coinbase_deposit_transaction,

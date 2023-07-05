@@ -32,5 +32,6 @@ router.post("/make_transfer", transactions_controller.make_transfer);
 
 router.post("/direct_deposit", transactions_controller.direct_deposit);
 router.post("/unstake_transaction", transactions_controller.unstake_transaction);
+router.post("/uni_comission_count", transactions_controller.uni_comission_count);
 
 module.exports = router;
