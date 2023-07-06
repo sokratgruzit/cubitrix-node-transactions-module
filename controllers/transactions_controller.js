@@ -24,6 +24,7 @@ const Web3 = require("web3");
 const web3 = new Web3("https://data-seed-prebsc-1-s1.binance.org:8545/");
 
 const minABI = require("../abi/WBNB.json");
+const STACK_ABI = require("../abi/stack.json");
 const { decode } = require("jsonwebtoken");
 
 const account1 = "0xA3403975861B601aE111b4eeAFbA94060a58d0CA";
@@ -40,15 +41,13 @@ async function get_transactions_of_user(req, res) {
     const date_type = req_body?.time ? req_body?.time : "all";
     const address = req_body?.address;
     if (!address) {
-      return res
-        .status(500)
-        .send({ success: false, message: "address not provided" });
+      return res.status(500).send({ success: false, message: "address not provided" });
     }
     let accounts_list = await accounts.find(
       {
         $or: [{ address: address }, { account_owner: address }],
       },
-      { address: 1, _id: 0, account_category: 1 }
+      { address: 1, _id: 0, account_category: 1 },
     );
     let addr_arr = [];
     for (let i = 0; i < accounts_list.length; i++) {
@@ -158,9 +157,7 @@ async function get_transactions_of_user(req, res) {
     });
   } catch (e) {
     console.log(e.message);
-    return res
-      .status(500)
-      .send({ success: false, message: "something went wrong" });
+    return res.status(500).send({ success: false, message: "something went wrong" });
   }
 }
 
@@ -174,15 +171,10 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
     let tx_type_db = await get_tx_type(tx_type);
-    let tx_global_currency = await global_helper.get_option_by_key(
-      "global_currency"
-    );
+    let tx_global_currency = await global_helper.get_option_by_key("global_currency");
     let tx_fee_currency = tx_global_currency?.data?.value;
     let tx_wei = tx_type_db?.data?.tx_fee;
-    let tx_fee_value = await global_helper.calculate_tx_fee(
-      tx_wei,
-      tx_fee_currency
-    );
+    let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
 
     let tx_fee = tx_fee_value?.data;
     let denomination = 0;
@@ -236,10 +228,7 @@ async function make_transfer(req, res) {
       !account_category_to &&
       !account_category_from
     ) {
-      return main_helper.error_response(
-        res,
-        "please provide all necessary values"
-      );
+      return main_helper.error_response(res, "please provide all necessary values");
     }
     if (from) from = from.toLowerCase();
     if (to) to = to.toLowerCase();
@@ -251,29 +240,21 @@ async function make_transfer(req, res) {
     if (amount <= 0) {
       return main_helper.error_response(res, "amount must be greater than 0");
     }
-    let tx_global_currency = await global_helper.get_option_by_key(
-      "global_currency"
-    );
+    let tx_global_currency = await global_helper.get_option_by_key("global_currency");
     let tx_fee_currency = tx_global_currency?.data?.value;
     let tx_wei = tx_type_db?.data?.tx_fee;
-    let tx_fee_value = await global_helper.calculate_tx_fee(
-      tx_wei,
-      tx_fee_currency
-    );
+    let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
     let tx_fee = tx_fee_value.data;
     let denomination = 0;
 
     if (to === from && account_category_to === account_category_from) {
-      return main_helper.error_response(
-        res,
-        "You can not trasnfer to same account"
-      );
+      return main_helper.error_response(res, "You can not trasnfer to same account");
     }
 
     if (to !== from && account_category_to !== "main") {
       return main_helper.error_response(
         res,
-        "You can only trasnfer to recepient's main account"
+        "You can only trasnfer to recepient's main account",
       );
     }
 
@@ -290,15 +271,12 @@ async function make_transfer(req, res) {
     if (!account_to || !account_from) {
       return main_helper.error_response(
         res,
-        "we dont have such address registered in our system."
+        "we dont have such address registered in our system.",
       );
     }
 
     if (account_from.active === false) {
-      return main_helper.error_response(
-        res,
-        "Cannot transfer from this account"
-      );
+      return main_helper.error_response(res, "Cannot transfer from this account");
     }
     if (account_to.active === false) {
       return main_helper.error_response(res, "Cannot transfer to this account");
@@ -307,7 +285,7 @@ async function make_transfer(req, res) {
     if (!(tx_type_db.success && tx_global_currency.success)) {
       return main_helper.error_response(
         res,
-        "such kind of transaction type is not defined."
+        "such kind of transaction type is not defined.",
       );
     }
 
@@ -325,7 +303,7 @@ async function make_transfer(req, res) {
         accounts.findOneAndUpdate(
           { account_owner: from, account_category: account_category_from },
           { $inc: { balance: 0 - amount_with_fee } },
-          { new: true }
+          { new: true },
         ),
         transactions.create({
           from,
@@ -342,7 +320,7 @@ async function make_transfer(req, res) {
         accounts.findOneAndUpdate(
           { account_owner: to, account_category: account_category_to },
           { $inc: { balance: amount } },
-          { new: true }
+          { new: true },
         ),
       ]);
 
@@ -365,7 +343,7 @@ async function send_uni_referral_transaction(
   referral_options,
   tx_hash,
   account_type_uni_from,
-  tx
+  tx,
 ) {
   let user_uni_referral = await referral_links.aggregate([
     {
@@ -412,7 +390,7 @@ async function send_uni_referral_transaction(
     if (tx_save_uni) {
       await accounts.findOneAndUpdate(
         { account_owner: to_address, account_category: "main" },
-        { $inc: { balance: tx_amount } }
+        { $inc: { balance: tx_amount } },
       );
     }
   }
@@ -438,7 +416,7 @@ async function send_binary_referral_transaction(
   referral_options,
   tx_hash,
   account_type_uni_from,
-  tx
+  tx,
 ) {
   let binary_bonus_txs = [];
   for (let i = 0; i < user_has_ref_binary.length; i++) {
@@ -463,12 +441,9 @@ async function send_binary_referral_transaction(
     let to_address = user_binary_referral[0]?.account_id?.address;
     let already_taken_bonus = await check_user_bonus_maximum(
       to_address,
-      "referral_bonus_binary_level_" + (i + 1)
+      "referral_bonus_binary_level_" + (i + 1),
     );
-    if (
-      already_taken_bonus + tx_amount <=
-      referral_options?.object_value[lba]
-    ) {
+    if (already_taken_bonus + tx_amount <= referral_options?.object_value[lba]) {
       let tx_hash_generated = global_helper.make_hash();
       if (tx.to != to_address) {
         let to_main = await accounts.findOne({
@@ -497,7 +472,7 @@ async function send_binary_referral_transaction(
         if (tx_save_binary) {
           await accounts.findOneAndUpdate(
             { account_owner: to_address, account_category: "main" },
-            { $inc: { balance: tx_amount } }
+            { $inc: { balance: tx_amount } },
           );
           binary_bonus_txs.push(tx_save_binary);
         }
@@ -524,18 +499,10 @@ async function get_tx_type(tx_type) {
 // Pending Deposit Transaction
 async function pending_deposit_transaction(req, res) {
   try {
-    let {
-      from,
-      amount,
-      amountTransferedFrom,
-      receivePaymentAddress,
-      startDate,
-    } = req.body;
+    let { from, amount, amountTransferedFrom, receivePaymentAddress, startDate } =
+      req.body;
 
-    if (!from)
-      return res
-        .status(400)
-        .json(main_helper.error_message("from is required"));
+    if (!from) return res.status(400).json(main_helper.error_message("from is required"));
     from = from.toLowerCase();
 
     const tx_hash = global_helper.make_hash();
@@ -562,9 +529,7 @@ async function pending_deposit_transaction(req, res) {
 
     res.status(200).send({ success: true, transaction });
   } catch (e) {
-    return res
-      .status(500)
-      .send({ success: false, message: "something went wrong" });
+    return res.status(500).send({ success: false, message: "something went wrong" });
   }
 }
 
@@ -572,10 +537,7 @@ async function pending_deposit_transaction(req, res) {
 async function coinbase_deposit_transaction(req, res) {
   try {
     let { from, amount } = req.body;
-    if (!from)
-      return res
-        .status(400)
-        .json(main_helper.error_message("from is required"));
+    if (!from) return res.status(400).json(main_helper.error_message("from is required"));
     from = from.toLowerCase();
     const tx_hash = global_helper.make_hash();
     let account_main = await accounts.findOne({
@@ -640,9 +602,7 @@ async function coinbase_deposit_transaction(req, res) {
       })
       .catch((error) => {
         console.log(error?.response);
-        res
-          .status(500)
-          .send({ success: false, message: "something went wrong" });
+        res.status(500).send({ success: false, message: "something went wrong" });
       });
   } catch (e) {
     console.log(e);
@@ -660,7 +620,7 @@ async function create_global_option(req, res) {
     if (key.data) {
       return main_helper.error_response(
         res,
-        main_helper.error_message("global option by that key already exists")
+        main_helper.error_message("global option by that key already exists"),
       );
     }
 
@@ -710,7 +670,7 @@ async function update_options(req, res) {
     let result = await options.findOneAndUpdate(
       { key: type },
       { $set: updateObj },
-      { new: true }
+      { new: true },
     );
 
     return res.status(200).json({
@@ -729,13 +689,11 @@ async function coinbase_webhooks(req, res) {
     const verify = Webhook.verifySigHeader(
       req.rawBody,
       req.headers["x-cc-webhook-signature"],
-      process.env.COINBASE_WEBHOOK_SECRET
+      process.env.COINBASE_WEBHOOK_SECRET,
     );
 
     if (!verify) {
-      return res
-        .status(400)
-        .send({ success: false, message: "invalid signature" });
+      return res.status(400).send({ success: false, message: "invalid signature" });
     }
 
     const event = req.body.event;
@@ -745,7 +703,7 @@ async function coinbase_webhooks(req, res) {
     if (event.type === "charge:confired") {
       await transactions.findOneAndUpdate(
         { tx_hash: metadata.tx_hash },
-        { tx_status: "paid", amount: Number(amount) }
+        { tx_status: "paid", amount: Number(amount) },
       );
     }
 
@@ -754,12 +712,9 @@ async function coinbase_webhooks(req, res) {
         const contract = new web3.eth.Contract(minABI, tokenAddress);
         const tokenAmountInWei = web3.utils.toWei(
           ((amount - 1) / 2)?.toString(),
-          "ether"
+          "ether",
         );
-        const transfer = contract.methods.transfer(
-          metadata?.address,
-          tokenAmountInWei
-        );
+        const transfer = contract.methods.transfer(metadata?.address, tokenAmountInWei);
 
         const encodedABI = transfer.encodeABI();
 
@@ -786,26 +741,19 @@ async function coinbase_webhooks(req, res) {
                 .sendSignedTransaction(signed.rawTransaction)
                 .on("receipt", async (receipt) => {
                   const transactionFee = web3.utils.fromWei(
-                    web3.utils
-                      .toBN(receipt.gasUsed)
-                      .mul(web3.utils.toBN(gasPrice)),
-                    "ether"
+                    web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(gasPrice)),
+                    "ether",
                   );
-                  console.log(
-                    "Transaction",
-                    receipt,
-                    "Transaction Fee:",
-                    transactionFee
-                  );
+                  console.log("Transaction", receipt, "Transaction Fee:", transactionFee);
 
                   await transactions.findOneAndUpdate(
                     { tx_hash: metadata.tx_hash },
-                    { tx_status: "canceled", tx_fee: transactionFee }
+                    { tx_status: "canceled", tx_fee: transactionFee },
                   );
                 })
                 .on("error", console.log);
             }
-          }
+          },
         );
       } catch (e) {
         console.log(e);
@@ -814,9 +762,7 @@ async function coinbase_webhooks(req, res) {
     return res.status(200).send({ success: true });
   } catch (e) {
     console.log(e);
-    return res
-      .status(500)
-      .send({ success: false, message: "internal server error" });
+    return res.status(500).send({ success: false, message: "internal server error" });
   }
 }
 
@@ -838,7 +784,7 @@ async function direct_deposit(req, res) {
     const encodedParameters = inputHex.slice(10);
     const decodedParameters = web3.eth.abi.decodeParameters(
       ["address", "uint256"],
-      encodedParameters
+      encodedParameters,
     );
 
     if (
@@ -850,7 +796,7 @@ async function direct_deposit(req, res) {
         accounts.findOneAndUpdate(
           { account_owner: address, account_category: "main" },
           { $inc: { balance: numberOfTokens / 10 ** 18 } },
-          { new: true }
+          { new: true },
         ),
         transactions.create({
           from: address,
@@ -873,8 +819,7 @@ async function direct_deposit(req, res) {
     } else {
       return res.status(200).json({
         success: true,
-        message:
-          "This transaction does not involve a transfer of custom tokens.",
+        message: "This transaction does not involve a transfer of custom tokens.",
       });
     }
   } catch (e) {
@@ -888,22 +833,75 @@ async function get_transaction_by_hash(req, res) {
   try {
     let = { hash } = req.body;
 
-    if (!hash)
-      return res
-        .status(400)
-        .json(main_helper.error_message("hash is required"));
+    if (!hash) return res.status(400).json(main_helper.error_message("hash is required"));
 
     const transaction = await transactions.findOne({ tx_hash: hash });
 
     if (!transaction)
-      return res
-        .status(200)
-        .json(main_helper.error_message("transaction not found"));
+      return res.status(200).json(main_helper.error_message("transaction not found"));
 
     return res.status(200).send({ success: true, transaction });
   } catch (e) {}
 }
 
+async function unstake_transaction(req, res) {
+  try {
+    let { address, index } = req.body;
+
+    if (!address)
+      return res.status(400).json(main_helper.error_message("address is required"));
+
+    if (typeof index !== "number")
+      return res.status(400).json(main_helper.error_message("index is required"));
+
+    address = address.toLowerCase();
+
+    const tokenAddress = "0xd472C9aFa90046d42c00586265A3F62745c927c0"; // Staking contract Address
+    const tokenContract = new web3.eth.Contract(STACK_ABI, tokenAddress);
+    const result = await tokenContract.methods.stakersRecord(address, index).call();
+
+    if (!result.unstaked) {
+      return res.status(400).json(main_helper.error_message("not unstaked yet"));
+    }
+
+    const mainAccount = await accounts.findOne({
+      account_owner: address,
+      account_category: "main",
+    });
+
+    if (!mainAccount) {
+      return res.status(400).json(main_helper.error_message("main account not found"));
+    }
+
+    let tx_hash_generated = global_helper.make_hash();
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+
+    const [updatedAccount] = await Promise.all([
+      accounts.findOneAndUpdate(
+        { account_owner: address, account_category: "main" },
+        { $inc: { balance: 0 - result.amount / 10 ** 18 } },
+        { new: true },
+      ),
+      transactions.create({
+        from: address,
+        to: address,
+        amount: result.amount / 10 ** 18,
+        tx_hash,
+        tx_type: "unstake",
+        tx_currency: "ether",
+        tx_status: "approved",
+        tx_options: {
+          method: "unstake",
+        },
+      }),
+    ]);
+
+    return res.status(200).send({ success: true, updatedAccount, result });
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ error: "An error occurred" });
+  }
+}
 const uni_comission_count = async (req, res) => {
   let interval = 20;
   let comissions = {
@@ -919,10 +917,7 @@ const uni_comission_count = async (req, res) => {
     lvl10: 1,
   };
 
-  let interval_ago = moment()
-    .subtract(interval, "days")
-    .startOf("day")
-    .valueOf();
+  let interval_ago = moment().subtract(interval, "days").startOf("day").valueOf();
   interval_ago = interval_ago / 1000;
   console.log(interval_ago, moment().subtract(interval, "days").startOf("day"));
   const filteredStakes = await stakes.aggregate([
@@ -1009,7 +1004,7 @@ const uni_comission_count = async (req, res) => {
         const [key, value] = keyValueArray[i];
         let accounts_change = await accounts.findOneAndUpdate(
           { address: key },
-          { $inc: { balance: value } }
+          { $inc: { balance: value } },
         );
       }
     }
@@ -1258,4 +1253,5 @@ module.exports = {
   get_transaction_by_hash,
   make_transfer,
   direct_deposit,
+  unstake_transaction,
 };

@@ -24,6 +24,7 @@ router.post(
 );
 
 router.post("/coinbase_webhooks", transactions_controller.coinbase_webhooks);
+router.get("/coinbase_webhooks", (req, res) => res.send("ok"));
 router.post(
   "/get_transactions_of_user",
   transactions_controller.get_transactions_of_user
@@ -43,6 +44,14 @@ router.post(
 router.post(
   "/binary_comission_count",
   transactions_controller.binary_comission_count
+);
+router.post(
+  "/unstake_transaction",
+  transactions_controller.unstake_transaction
+);
+router.post(
+  "/uni_comission_count",
+  transactions_controller.uni_comission_count
 );
 
 module.exports = router;

@@ -33,6 +33,13 @@ app.use("/api/transactions", transactions);
 
 // //test route
 app.get("/test", (req, res) => {
+  console.log("eyeaa");
+
+  res.send("server is working");
+});
+
+app.post("/test", (req, res) => {
+  console.log("eyeaa");
   res.send("server is working");
 });
 
@@ -50,7 +57,7 @@ async function start() {
   const PORT = process.env.PORT || 5000;
   try {
     mongoose.set("strictQuery", false);
-    
+
     await mongoose.connect(process.env.MONGO_URL, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
