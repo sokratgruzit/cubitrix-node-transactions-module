@@ -12,6 +12,7 @@ const {
   stakes,
 } = require("@cubitrix/models");
 const moment = require("moment");
+const _ = require("lodash");
 
 require("dotenv").config();
 
@@ -1016,8 +1017,237 @@ const uni_comission_count = async (req, res) => {
   return main_helper.success_response(res, "updated");
 };
 
+const binary_comission_count = async (req, res) => {
+  let interval = 30;
+  let interval_ago = moment()
+    .subtract(interval, "days")
+    .startOf("day")
+    .valueOf();
+  interval_ago = interval_ago / 1000;
+  const filteredStakes = await stakes.aggregate([
+    {
+      $match: {
+        staketime: { $gte: interval_ago },
+      },
+    },
+    {
+      $group: {
+        _id: "$address",
+        totalAmount: { $sum: "$amount" },
+      },
+    },
+  ]);
+  let addresses_that_staked_this_interval = [];
+  for (let i = 0; i < filteredStakes.length; i++) {
+    addresses_that_staked_this_interval.push(filteredStakes[i]._id);
+  }
+
+  let referral_user_addresses = await referral_binary_users.find({
+    user_address: { $in: addresses_that_staked_this_interval },
+  });
+  let addresses_that_staked_this_interval_parent = [];
+
+  for (let i = 0; i < referral_user_addresses.length; i++) {
+    addresses_that_staked_this_interval_parent.push(
+      referral_user_addresses[i].referral_address
+    );
+  }
+
+  let referral_addresses = await referral_binary_users.aggregate([
+    {
+      $match: {
+        referral_address: { $in: addresses_that_staked_this_interval_parent },
+      },
+    },
+    {
+      $group: {
+        _id: "$referral_address",
+        documents: { $push: "$$ROOT" },
+      },
+    },
+    {
+      $sort: {
+        "_id.referral_address": 1,
+      },
+    },
+  ]);
+  let calc_result = [];
+  for (let i = 0; i < referral_addresses.length; i++) {
+    let document = referral_addresses[i].documents;
+    let amount_sum_left = 0;
+    let amount_sum_right = 0;
+    for (let k = 0; k < document.length; k++) {
+      let one_doc = document[k];
+      let this_addr_stake = _.find(filteredStakes, {
+        _id: one_doc.user_address,
+      });
+      if (this_addr_stake) {
+        if (one_doc.side == "left") {
+          amount_sum_left += this_addr_stake.totalAmount;
+        } else {
+          amount_sum_right += this_addr_stake.totalAmount;
+        }
+      }
+    }
+    let side, amount;
+    if (amount_sum_left > amount_sum_right) {
+      (side = "right"), (amount = amount_sum_right);
+    } else {
+      (side = "left"), (amount = amount_sum_left);
+    }
+    if (amount != 0) {
+      calc_result.push({
+        address: referral_addresses[i]._id,
+        side,
+        amount,
+      });
+    }
+  }
+  let bv = 5000;
+  let bv_options = [
+    {
+      from: 5000,
+      to: 100000,
+      price: 500,
+      lvl: 1,
+    },
+    {
+      from: 100000,
+      to: 300000,
+      price: 300,
+      lvl: 2,
+    },
+    {
+      from: 300000,
+      to: null,
+      price: 100,
+      lvl: 3,
+    },
+  ];
+  let all_tx_to_be_done = [];
+  let calc_result_test = [
+    {
+      address: "1",
+      side: "left",
+      amount: 100000,
+    },
+    {
+      address: "2",
+      side: "left",
+      amount: 300000,
+    },
+    {
+      address: "3",
+      side: "left",
+      amount: 1000000,
+    },
+    {
+      address: "4",
+      side: "left",
+      amount: 105000,
+    },
+    {
+      address: "5",
+      side: "left",
+      amount: 100,
+    },
+    {
+      address: "6",
+      side: "left",
+      amount: 5000,
+    },
+  ];
+  calc_result = calc_result_test;
+  for (let k = 0; k < calc_result.length; k++) {
+    let one_calc = calc_result[k];
+    let user_amount_added_by_lvl = [];
+    let amount = one_calc.amount;
+    if (amount == bv) {
+      amount += 1;
+    }
+    let user_whole_amount = 0;
+    for (let i = 0; i < bv_options.length; i++) {
+      let oneBv = bv_options[i];
+
+      if (amount > oneBv.from) {
+        let amount_multip_prepare = amount - oneBv.from;
+        if (oneBv.lvl == 1) {
+          amount_multip_prepare = amount;
+        }
+        if (oneBv.to && amount > oneBv.to) {
+          amount_multip_prepare = oneBv.to;
+        }
+
+        let amunt_to_multiply = Math.floor(amount_multip_prepare / bv);
+        user_amount_added_by_lvl.push({
+          lvl: oneBv.lvl,
+          amount: amunt_to_multiply * oneBv.price,
+          side: one_calc.side,
+          amunt_to_multiply,
+          price: oneBv.price,
+          address: one_calc.address,
+          one_calc_amount: one_calc.amount,
+          amount_multip_prepare,
+        });
+        user_whole_amount += one_calc.amount;
+      }
+    }
+    if (user_amount_added_by_lvl.length > 0) {
+      all_tx_to_be_done.push({
+        address: calc_result.address,
+        amount: user_whole_amount,
+        docs: user_amount_added_by_lvl,
+      });
+    }
+  }
+  let write_tx = [];
+  for (let i = 0; i < all_tx_to_be_done.length; i++) {
+    let tx_hash_generated = global_helper.make_hash();
+
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+
+    let Txs = all_tx_to_be_done[i].docs;
+    for (let k = 0; k < Txs.length; k++) {
+      let oneTx = Txs[k];
+      write_tx.push({
+        from: oneTx.side,
+        to: oneTx.address,
+        amount: oneTx.amount,
+        tx_hash,
+        tx_type: "bonus",
+        tx_currency: "ether",
+        tx_status: "confirmed",
+        tx_options: {
+          method: "referral",
+          type: "binary bv",
+          lvl: oneTx.lvl,
+        },
+      });
+    }
+  }
+  let transaction = await transactions.insertMany(write_tx);
+  if (transaction) {
+    for (let i = 0; i < all_tx_to_be_done.length; i++) {
+      let one_tx = all_tx_to_be_done[i];
+      let account_update = await accounts.findOneAndUpdate(
+        { address: one_tx.address },
+        { $inc: { balance: one_tx.amount } }
+      );
+    }
+  }
+
+  return main_helper.success_response(res, {
+    write_tx,
+    all_tx_to_be_done,
+    referral_addresses,
+    filteredStakes,
+    calc_result,
+  });
+};
+
 module.exports = {
   uni_comission_count,
+  binary_comission_count,
   create_deposit_transaction,
   pending_deposit_transaction,
   coinbase_deposit_transaction,

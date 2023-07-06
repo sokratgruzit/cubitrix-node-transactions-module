@@ -40,5 +40,9 @@ router.post(
   "/uni_comission_count",
   transactions_controller.uni_comission_count
 );
+router.post(
+  "/binary_comission_count",
+  transactions_controller.binary_comission_count
+);
 
 module.exports = router;
