@@ -1014,10 +1014,7 @@ const uni_comission_count = async (req, res) => {
 
 const binary_comission_count = async (req, res) => {
   let interval = 30;
-  let interval_ago = moment()
-    .subtract(interval, "days")
-    .startOf("day")
-    .valueOf();
+  let interval_ago = moment().subtract(interval, "days").startOf("day").valueOf();
   interval_ago = interval_ago / 1000;
   const filteredStakes = await stakes.aggregate([
     {
@@ -1044,7 +1041,7 @@ const binary_comission_count = async (req, res) => {
 
   for (let i = 0; i < referral_user_addresses.length; i++) {
     addresses_that_staked_this_interval_parent.push(
-      referral_user_addresses[i].referral_address
+      referral_user_addresses[i].referral_address,
     );
   }
 
@@ -1226,7 +1223,7 @@ const binary_comission_count = async (req, res) => {
       let one_tx = all_tx_to_be_done[i];
       let account_update = await accounts.findOneAndUpdate(
         { address: one_tx.address },
-        { $inc: { balance: one_tx.amount } }
+        { $inc: { balance: one_tx.amount } },
       );
     }
   }
@@ -1239,6 +1236,54 @@ const binary_comission_count = async (req, res) => {
     calc_result,
   });
 };
+
+async function exchange(req, res) {
+  try {
+    let { address, fromAccType, fromAmount, toAccType, toAmount } = req.body;
+
+    if (!address)
+      return res.status(400).send({ success: false, message: "address is required" });
+
+    address = address.toLowerCase();
+
+    const mainAccount = await accounts.findOne({
+      account_owner: address,
+      account_category: "main",
+    });
+
+    if (!mainAccount) {
+      return res.status(400).send({ success: false, message: "main account not found" });
+    }
+
+    if (fromAccType === "ATAR" && mainAccount.balance < fromAmount) {
+      return res.status(400).send({ success: false, message: "insufficient balance" });
+    } else if (mainAccount.assets?.[fromAccType] < fromAmount) {
+      return res.status(400).send({ success: false, message: "insufficient balance" });
+    }
+
+    if (fromAccType === "ATAR") {
+      await accounts.findOneAndUpdate(
+        { account_owner: address, account_category: "main" },
+        { $inc: { balance: 0 - fromAmount, [`assets.${toAccType}`]: toAmount } },
+      );
+    } else {
+      await accounts.findOneAndUpdate(
+        { account_owner: address, account_category: "main" },
+        {
+          $inc: {
+            [`assets.${fromAccType}`]: 0 - fromAmount,
+            [`assets.${toAccType}`]: toAmount,
+          },
+        },
+      );
+    }
+
+    return res.status(200).send({ success: true });
+  } catch (e) {
+    console.log(e, "exchange");
+    return res.status(500).send({ success: false, message: "internal server error" });
+  }
+}
 
 module.exports = {
   uni_comission_count,
@@ -1254,4 +1299,5 @@ module.exports = {
   make_transfer,
   direct_deposit,
   unstake_transaction,
+  exchange,
 };
