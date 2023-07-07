@@ -235,16 +235,10 @@ async function make_transfer(req, res) {
 
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
-    let tx_type_db = await get_tx_type(tx_type);
     amount = parseFloat(amount);
     if (amount <= 0) {
       return main_helper.error_response(res, "amount must be greater than 0");
     }
-    let tx_global_currency = await global_helper.get_option_by_key("global_currency");
-    let tx_fee_currency = tx_global_currency?.data?.value;
-    let tx_wei = tx_type_db?.data?.tx_fee;
-    let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
-    let tx_fee = tx_fee_value.data;
     let denomination = 0;
 
     if (to === from && account_category_to === account_category_from) {
@@ -282,23 +276,7 @@ async function make_transfer(req, res) {
       return main_helper.error_response(res, "Cannot transfer to this account");
     }
 
-    if (!(tx_type_db.success && tx_global_currency.success)) {
-      return main_helper.error_response(
-        res,
-        "such kind of transaction type is not defined.",
-      );
-    }
-
-    if (!tx_fee_currency && !tx_wei) {
-      return main_helper.error_response(res, "fee currency is not defined");
-    }
-    if (!tx_fee_value.success) {
-      return main_helper.error_response(res, tx_fee_value.message);
-    }
-
-    let amount_with_fee = parseFloat(amount) + parseFloat(tx_fee);
-
-    if (account_from.balance >= amount_with_fee) {
+    if (account_from.balance >= parseFloat(amount)) {
       const [updatedAcc, createdTransaction] = await Promise.all([
         accounts.findOneAndUpdate(
           { account_owner: from, account_category: account_category_from },
@@ -313,8 +291,6 @@ async function make_transfer(req, res) {
           tx_status: "approved",
           tx_type,
           denomination,
-          tx_fee,
-          tx_fee_currency,
           tx_currency,
         }),
         accounts.findOneAndUpdate(
