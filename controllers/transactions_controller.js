@@ -1255,6 +1255,12 @@ async function exchange(req, res) {
       return res.status(400).send({ success: false, message: "main account not found" });
     }
 
+    if (fromAccType.toLowerCase() === toAccType.toLowerCase()) {
+      return res
+        .status(400)
+        .send({ success: false, message: "from and to account type can not be same" });
+    }
+
     if (fromAccType === "ATAR" && mainAccount.balance < fromAmount) {
       return res.status(400).send({ success: false, message: "insufficient balance" });
     } else if (mainAccount.assets?.[fromAccType] < fromAmount) {
@@ -1265,6 +1271,11 @@ async function exchange(req, res) {
       await accounts.findOneAndUpdate(
         { account_owner: address, account_category: "main" },
         { $inc: { balance: 0 - fromAmount, [`assets.${toAccType}`]: toAmount } },
+      );
+    } else if (toAccType === "ATAR") {
+      await accounts.findOneAndUpdate(
+        { account_owner: address, account_category: "main" },
+        { $inc: { balance: toAmount, [`assets.${fromAccType}`]: 0 - fromAmount } },
       );
     } else {
       await accounts.findOneAndUpdate(
