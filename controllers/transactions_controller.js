@@ -280,7 +280,7 @@ async function make_transfer(req, res) {
       const [updatedAcc, createdTransaction] = await Promise.all([
         accounts.findOneAndUpdate(
           { account_owner: from, account_category: account_category_from },
-          { $inc: { balance: 0 - amount_with_fee } },
+          { $inc: { balance: 0 - parseFloat(amount) } },
           { new: true },
         ),
         transactions.create({
