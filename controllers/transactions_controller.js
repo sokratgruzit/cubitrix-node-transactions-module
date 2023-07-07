@@ -1267,18 +1267,22 @@ async function exchange(req, res) {
       return res.status(400).send({ success: false, message: "insufficient balance" });
     }
 
+    let tx_hash_generated = global_helper.make_hash();
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+
+    let query = null;
     if (fromAccType === "ATAR") {
-      await accounts.findOneAndUpdate(
+      query = accounts.findOneAndUpdate(
         { account_owner: address, account_category: "main" },
         { $inc: { balance: 0 - fromAmount, [`assets.${toAccType}`]: toAmount } },
       );
     } else if (toAccType === "ATAR") {
-      await accounts.findOneAndUpdate(
+      query = accounts.findOneAndUpdate(
         { account_owner: address, account_category: "main" },
         { $inc: { balance: toAmount, [`assets.${fromAccType}`]: 0 - fromAmount } },
       );
     } else {
-      await accounts.findOneAndUpdate(
+      query = accounts.findOneAndUpdate(
         { account_owner: address, account_category: "main" },
         {
           $inc: {
@@ -1288,6 +1292,25 @@ async function exchange(req, res) {
         },
       );
     }
+    await Promise.all([
+      transactions.create({
+        from: address,
+        to: address,
+        amount: fromAmount,
+        tx_hash,
+        tx_type: "exchange",
+        tx_currency: "ether",
+        tx_status: "approved",
+        tx_options: {
+          method: "exchange",
+          fromAccType: fromAccType.toUpperCase(),
+          toAccType: toAccType.toUpperCase(),
+          fromAmount,
+          toAmount,
+        },
+      }),
+      query,
+    ]);
 
     return res.status(200).send({ success: true });
   } catch (e) {
