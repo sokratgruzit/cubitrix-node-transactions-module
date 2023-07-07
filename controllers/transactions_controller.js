@@ -1292,7 +1292,8 @@ async function exchange(req, res) {
         },
       );
     }
-    await Promise.all([
+    const [mainAccountUpdated] = await Promise.all([
+      query,
       transactions.create({
         from: address,
         to: address,
@@ -1309,10 +1310,9 @@ async function exchange(req, res) {
           toAmount,
         },
       }),
-      query,
     ]);
 
-    return res.status(200).send({ success: true });
+    return res.status(200).send({ success: true, result: mainAccountUpdated });
   } catch (e) {
     console.log(e, "exchange");
     return res.status(500).send({ success: false, message: "internal server error" });
