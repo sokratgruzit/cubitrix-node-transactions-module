@@ -758,6 +758,10 @@ async function make_withdrawal(req, res) {
       return res.status(400).json(main_helper.error_message("main account not found"));
     }
 
+    if (mainAccount.assets[accountType] < amount) {
+      return res.status(400).json(main_helper.error_message("insufficient funds"));
+    }
+
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
