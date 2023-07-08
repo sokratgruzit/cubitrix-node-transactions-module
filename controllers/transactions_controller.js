@@ -551,8 +551,8 @@ async function coinbase_deposit_transaction(req, res) {
         eth: true,
         usdt: true,
       },
-      redirect_url: `${process.env.FRONTEND_URL}/deposit/${tx_hash}`,
-      cancel_url: `${process.env.FRONTEND_URL}/deposit/${tx_hash}`,
+      redirect_url: `${process.env.FRONTEND_URL}`,
+      cancel_url: `${process.env.FRONTEND_URL}`,
     };
 
     axios
