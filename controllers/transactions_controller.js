@@ -742,6 +742,58 @@ async function coinbase_webhooks(req, res) {
   }
 }
 
+async function make_withdrawal(req, res) {
+  let { address, address_to, amount, accountType, rate } = req.body;
+  if (!address) {
+    return res.status(400).json({ error: "address is required" });
+  }
+  address = address.toLowerCase();
+  try {
+    const mainAccount = await accounts.findOne({
+      account_owner: address,
+      account_category: "main",
+    });
+
+    if (!mainAccount) {
+      return res.status(400).json(main_helper.error_message("main account not found"));
+    }
+
+    let tx_hash_generated = global_helper.make_hash();
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+
+    const [updatedMainAcc] = await Promise.all([
+      accounts.findOneAndUpdate(
+        { account_owner: address, account_category: "main" },
+        { $inc: { [`assets.${accountType}`]: 0 - amount } },
+        { new: true },
+      ),
+      transactions.create({
+        from: address,
+        to: address_to,
+        amount,
+        tx_hash,
+        tx_type: "withdrawal",
+        tx_currency: "ether",
+        tx_status: "pending",
+        tx_options: {
+          method: "manual",
+          currency: accountType,
+          rate,
+        },
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "successfull transaction",
+      result: updatedMainAcc,
+    });
+  } catch (e) {
+    console.log(e, "make_withdrawal");
+    return res.status(500).send({ success: false, message: "internal server error" });
+  }
+}
+
 async function direct_deposit(req, res) {
   try {
     let { address, hash } = req.body;
@@ -1310,4 +1362,5 @@ module.exports = {
   direct_deposit,
   unstake_transaction,
   exchange,
+  make_withdrawal,
 };
