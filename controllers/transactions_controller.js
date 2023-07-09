@@ -43,24 +43,9 @@ async function get_transactions_of_user(req, res) {
     if (!address) {
       return res.status(500).send({ success: false, message: "address not provided" });
     }
-    let accounts_list = await accounts.find(
-      {
-        $or: [{ address: address }, { account_owner: address }],
-      },
-      { address: 1, _id: 0, account_category: 1 },
-    );
-    let addr_arr = [];
-    for (let i = 0; i < accounts_list.length; i++) {
-      if (account_type == "all") {
-        addr_arr.push(accounts_list[i].address);
-      } else {
-        if (accounts_list[i].account_category == account_type) {
-          addr_arr.push(accounts_list[i].address);
-        }
-      }
-    }
 
-    console.log(addr_arr);
+    let addr_arr = [address];
+
     const pipeline = [
       {
         $facet: {
@@ -112,6 +97,32 @@ async function get_transactions_of_user(req, res) {
         },
       ],
     };
+
+    if (account_type !== "all") {
+      data.$or = [
+        {
+          to: {
+            $in: addr_arr,
+          },
+          tx_options: { $exists: true }, // Check if tx_options field exists
+          $or: [
+            { "tx_options.account_category_to": account_type },
+            { "tx_options.account_category_from": account_type },
+          ],
+        },
+        {
+          from: {
+            $in: addr_arr,
+          },
+          tx_options: { $exists: true }, // Check if tx_options field exists
+          $or: [
+            { "tx_options.account_category_to": account_type },
+            { "tx_options.account_category_from": account_type },
+          ],
+        },
+      ];
+    }
+
     if (method_type != "all" && method_type != null) {
       if (method_type == "bonus") {
         let referral_types = [
@@ -280,12 +291,10 @@ async function make_transfer(req, res) {
 
     if (account_from.balance >= parseFloat(amount)) {
       let tx_options = undefined;
-      if (tx_type === "internal_transfer") {
-        tx_options = {
-          account_category_to,
-          account_category_from,
-        };
-      }
+      tx_options = {
+        account_category_to,
+        account_category_from,
+      };
       const [updatedAcc, createdTransaction] = await Promise.all([
         accounts.findOneAndUpdate(
           { account_owner: from, account_category: account_category_from },
