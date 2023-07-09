@@ -59,6 +59,8 @@ async function get_transactions_of_user(req, res) {
         }
       }
     }
+
+    console.log(addr_arr);
     const pipeline = [
       {
         $facet: {
@@ -277,6 +279,13 @@ async function make_transfer(req, res) {
     }
 
     if (account_from.balance >= parseFloat(amount)) {
+      let tx_options = undefined;
+      if (tx_type === "internal_transfer") {
+        tx_options = {
+          account_category_to,
+          account_category_from,
+        };
+      }
       const [updatedAcc, createdTransaction] = await Promise.all([
         accounts.findOneAndUpdate(
           { account_owner: from, account_category: account_category_from },
@@ -292,6 +301,7 @@ async function make_transfer(req, res) {
           tx_type,
           denomination,
           tx_currency,
+          tx_options,
         }),
         accounts.findOneAndUpdate(
           { account_owner: to, account_category: account_category_to },
