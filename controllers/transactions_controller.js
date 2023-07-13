@@ -39,12 +39,23 @@ async function get_transactions_of_user(req, res) {
     const account_type = req_body?.account ? req_body?.account : "all";
     const method_type = req_body?.type ? req_body?.type : "all";
     const date_type = req_body?.time ? req_body?.time : "all";
-    const address = req_body?.address;
+    let address = req_body?.address;
     if (!address) {
       return res.status(500).send({ success: false, message: "address not provided" });
     }
 
-    let addr_arr = [address];
+    address = address.toLowerCase();
+
+    const mainAccount = await accounts.findOne({
+      account_owner: address,
+      account_category: "main",
+    });
+
+    if (!mainAccount) {
+      return res.status(400).json(main_helper.error_message("main account not found"));
+    }
+
+    let addr_arr = [address, mainAccount.address];
 
     const pipeline = [
       {
@@ -53,22 +64,29 @@ async function get_transactions_of_user(req, res) {
             {
               $match: {
                 to: { $in: addr_arr },
-              },
-            },
-            {
-              $count: "toCount",
-            },
-          ],
-          fromSum: [
-            {
-              $match: {
-                from: { $in: addr_arr },
+                tx_type: { $in: ["transfer", "deposit", "bonus", "internal_transfer"] },
               },
             },
             {
               $group: {
                 _id: null,
                 totalAmount: { $sum: "$amount" },
+                count: { $sum: 1 },
+              },
+            },
+          ],
+          fromSum: [
+            {
+              $match: {
+                from: { $in: addr_arr },
+                tx_type: { $in: ["transfer", "deposit", "internal_transfer"] },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                totalAmount: { $sum: "$amount" },
+                count: { $sum: 1 },
               },
             },
           ],
@@ -76,12 +94,16 @@ async function get_transactions_of_user(req, res) {
       },
       {
         $project: {
-          toCount: { $arrayElemAt: ["$toCount.toCount", 0] },
+          toCount: { $arrayElemAt: ["$toCount.count", 0] },
+          toSum: { $arrayElemAt: ["$toCount.totalAmount", 0] },
+          fromCount: { $arrayElemAt: ["$fromSum.count", 0] },
           fromSum: { $arrayElemAt: ["$fromSum.totalAmount", 0] },
         },
       },
     ];
+
     let amounts_to_from = await transactions.aggregate(pipeline);
+
     let tx_type_to_check = null;
     let data = {
       $or: [
@@ -166,7 +188,7 @@ async function get_transactions_of_user(req, res) {
       transactions: result,
       total_pages: Math.ceil(total_pages / limit),
       total_transaction: total_pages,
-      amounts_to_from,
+      amounts_to_from: amounts_to_from,
     });
   } catch (e) {
     console.log(e.message);
