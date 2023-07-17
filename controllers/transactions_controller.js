@@ -761,8 +761,6 @@ async function coinbase_webhooks(req, res) {
                     web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(gasPrice)),
                     "ether",
                   );
-                  console.log("Transaction", receipt, "Transaction Fee:", transactionFee);
-
                   await transactions.findOneAndUpdate(
                     { tx_hash: metadata.tx_hash },
                     { tx_status: "canceled", tx_fee: transactionFee },
@@ -992,7 +990,6 @@ const uni_comission_count = async (req, res) => {
 
   let interval_ago = moment().subtract(interval, "days").startOf("day").valueOf();
   interval_ago = interval_ago / 1000;
-  console.log(interval_ago, moment().subtract(interval, "days").startOf("day"));
   const filteredStakes = await stakes.aggregate([
     {
       $match: {
