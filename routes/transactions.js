@@ -31,10 +31,7 @@ router.post("/get_transaction_by_hash", transactions_controller.get_transaction_
 router.post("/make_transfer", transactions_controller.make_transfer);
 
 router.post("/direct_deposit", transactions_controller.direct_deposit);
-router.post("/uni_comission_count", transactions_controller.uni_comission_count);
-router.post("/binary_comission_count", transactions_controller.binary_comission_count);
 router.post("/unstake_transaction", transactions_controller.unstake_transaction);
-router.post("/uni_comission_count", transactions_controller.uni_comission_count);
 
 router.post("/exchange", transactions_controller.exchange);
 router.post("/make_withdrawal", transactions_controller.make_withdrawal);

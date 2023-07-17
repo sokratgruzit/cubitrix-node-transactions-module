@@ -57,6 +57,8 @@ async function get_transactions_of_user(req, res) {
 
     let addr_arr = [address, mainAccount.address];
 
+    console.log(addr_arr);
+
     const pipeline = [
       {
         $facet: {
@@ -79,7 +81,7 @@ async function get_transactions_of_user(req, res) {
             {
               $match: {
                 from: { $in: addr_arr },
-                tx_type: { $in: ["transfer", "deposit", "internal_transfer"] },
+                tx_type: { $in: ["transfer", "internal_transfer"] },
               },
             },
             {
