@@ -57,8 +57,6 @@ async function get_transactions_of_user(req, res) {
 
     let addr_arr = [address, mainAccount.address];
 
-    console.log(addr_arr);
-
     const pipeline = [
       {
         $facet: {
@@ -194,7 +192,7 @@ async function get_transactions_of_user(req, res) {
     });
   } catch (e) {
     console.log(e.message);
-    return res.status(500).send({ success: false, message: "something went wrong" });
+    return res.status(500).send({ success: false, message: e.message });
   }
 }
 
@@ -592,7 +590,7 @@ async function coinbase_deposit_transaction(req, res) {
       supported_currencies: {
         btc: true,
         eth: true,
-        usdt: true,
+        usdc: true,
       },
       redirect_url: `${process.env.FRONTEND_URL}`,
       cancel_url: `${process.env.FRONTEND_URL}`,
@@ -763,7 +761,6 @@ async function coinbase_webhooks(req, res) {
                     web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(gasPrice)),
                     "ether",
                   );
-                  console.log("Transaction", receipt, "Transaction Fee:", transactionFee);
                   await transactions.findOneAndUpdate(
                     { tx_hash: metadata.tx_hash },
                     { tx_status: "canceled", tx_fee: transactionFee },
