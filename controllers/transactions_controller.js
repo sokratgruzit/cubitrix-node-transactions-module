@@ -876,7 +876,7 @@ async function direct_deposit(req, res) {
           tx_hash,
           tx_type: "deposit",
           tx_currency: "ether",
-          tx_status: "pending",
+          tx_status: "approved",
           tx_options: {
             method: "direct",
           },
