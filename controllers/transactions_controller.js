@@ -287,15 +287,27 @@ async function make_transfer(req, res) {
       );
     }
 
-    let account_to = await accounts.findOne({
-      account_owner: to,
-      account_category: account_category_to,
-    });
+    let queries = [
+      accounts.findOne({ account_owner: to, account_category: account_category_to }),
+      accounts.findOne({ account_owner: from, account_category: account_category_from }),
+    ];
 
-    let account_from = await accounts.findOne({
-      account_owner: from,
-      account_category: account_category_from,
-    });
+    if (account_category_from !== "main") {
+      queries.push(
+        accounts.findOne({
+          account_owner: from,
+          account_category: "main",
+        }),
+      );
+    }
+
+    let [account_to, account_from, mainAccount] = await Promise.all(queries);
+
+    if (account_category_from === "main") mainAccount = account_from;
+
+    if (!mainAccount.active) {
+      return main_helper.error_response(res, "Cannot transfer from this account");
+    }
 
     if (!account_to || !account_from) {
       return main_helper.error_response(
@@ -311,7 +323,7 @@ async function make_transfer(req, res) {
       return main_helper.error_response(res, "Cannot transfer to this account");
     }
 
-    if (account_from.balance >= parseFloat(amount)) {
+    if (account_from.balance - account_from.totalStaked >= parseFloat(amount)) {
       let tx_options = undefined;
       tx_options = {
         account_category_to,
@@ -797,6 +809,12 @@ async function make_withdrawal(req, res) {
       return res.status(400).json(main_helper.error_message("main account not found"));
     }
 
+    if (!mainAccount.active) {
+      return res
+        .status(400)
+        .json(main_helper.error_message("main account is not active"));
+    }
+
     if (mainAccount.assets[accountType] < amount) {
       return res.status(400).json(main_helper.error_message("insufficient funds"));
     }
@@ -992,13 +1010,22 @@ async function exchange(req, res) {
       return res.status(400).send({ success: false, message: "main account not found" });
     }
 
+    if (!mainAccount.active) {
+      return res
+        .status(400)
+        .json(main_helper.error_message("main account is not active"));
+    }
+
     if (fromAccType.toLowerCase() === toAccType.toLowerCase()) {
       return res
         .status(400)
         .send({ success: false, message: "from and to account type can not be same" });
     }
 
-    if (fromAccType === "ATAR" && mainAccount.balance < fromAmount) {
+    if (
+      fromAccType === "ATAR" &&
+      mainAccount.balance - mainAccount.totalStaked < fromAmount
+    ) {
       return res.status(400).send({ success: false, message: "insufficient balance" });
     } else if (mainAccount.assets?.[fromAccType] < fromAmount) {
       return res.status(400).send({ success: false, message: "insufficient balance" });
