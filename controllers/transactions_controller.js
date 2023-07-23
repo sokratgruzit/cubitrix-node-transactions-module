@@ -323,7 +323,12 @@ async function make_transfer(req, res) {
       return main_helper.error_response(res, "Cannot transfer to this account");
     }
 
-    if (account_from.balance - account_from.totalStaked >= parseFloat(amount)) {
+    if (
+      account_category_from === "trade" &&
+      account_from.balance - account_from.totalStaked >= parseFloat(amount)
+    ) {
+      return main_helper.error_response(res, "Insufficient funds");
+    } else if (account_from.balance >= parseFloat(amount)) {
       let tx_options = undefined;
       tx_options = {
         account_category_to,
@@ -815,6 +820,41 @@ async function make_withdrawal(req, res) {
         .json(main_helper.error_message("main account is not active"));
     }
 
+    if (accountType === "main") {
+      if (mainAccount.balance < amount) {
+        return res.status(400).json(main_helper.error_message("insufficient funds"));
+      }
+      let tx_hash_generated = global_helper.make_hash();
+      let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+
+      const [updatedMainAcc] = await Promise.all([
+        accounts.findOneAndUpdate(
+          { account_owner: address, account_category: "main" },
+          { $inc: { balance: 0 - amount } },
+          { new: true },
+        ),
+        transactions.create({
+          from: address,
+          to: address_to,
+          amount,
+          tx_hash,
+          tx_type: "withdrawal",
+          tx_currency: "ether",
+          tx_status: "pending",
+          tx_options: {
+            method: "manual",
+            currency: "ATR",
+            rate,
+          },
+        }),
+      ]);
+      return res.status(200).json({
+        success: true,
+        message: "successfull transaction",
+        result: updatedMainAcc,
+      });
+    }
+
     if (mainAccount.assets[accountType] < amount) {
       return res.status(400).json(main_helper.error_message("insufficient funds"));
     }
@@ -1022,10 +1062,7 @@ async function exchange(req, res) {
         .send({ success: false, message: "from and to account type can not be same" });
     }
 
-    if (
-      fromAccType === "ATAR" &&
-      mainAccount.balance - mainAccount.totalStaked < fromAmount
-    ) {
+    if (fromAccType === "ATAR" && mainAccount.balance < fromAmount) {
       return res.status(400).send({ success: false, message: "insufficient balance" });
     } else if (mainAccount.assets?.[fromAccType] < fromAmount) {
       return res.status(400).send({ success: false, message: "insufficient balance" });
