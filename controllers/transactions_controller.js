@@ -290,20 +290,13 @@ async function make_transfer(req, res) {
     let queries = [
       accounts.findOne({ account_owner: to, account_category: account_category_to }),
       accounts.findOne({ account_owner: from, account_category: account_category_from }),
+      accounts.findOne({
+        account_owner: from,
+        account_category: "main",
+      }),
     ];
 
-    if (account_category_from !== "main") {
-      queries.push(
-        accounts.findOne({
-          account_owner: from,
-          account_category: "main",
-        }),
-      );
-    }
-
     let [account_to, account_from, mainAccount] = await Promise.all(queries);
-
-    if (account_category_from === "main") mainAccount = account_from;
 
     if (!mainAccount.active) {
       return main_helper.error_response(res, "Cannot transfer from this account");
@@ -322,12 +315,11 @@ async function make_transfer(req, res) {
     if (account_to.active === false) {
       return main_helper.error_response(res, "Cannot transfer to this account");
     }
-
     if (
       account_category_from === "trade" &&
-      account_from.balance - account_from.totalStaked <= parseFloat(amount)
+      account_from.balance - mainAccount.stakedTotal < parseFloat(amount)
     ) {
-      return main_helper.error_response(res, "Insufficient funds");
+      return main_helper.error_response(res, "Insufficient funds or locked funds");
     } else if (account_from.balance >= parseFloat(amount)) {
       let tx_options = undefined;
       tx_options = {
