@@ -325,7 +325,7 @@ async function make_transfer(req, res) {
 
     if (
       account_category_from === "trade" &&
-      account_from.balance - account_from.totalStaked >= parseFloat(amount)
+      account_from.balance - account_from.totalStaked <= parseFloat(amount)
     ) {
       return main_helper.error_response(res, "Insufficient funds");
     } else if (account_from.balance >= parseFloat(amount)) {
