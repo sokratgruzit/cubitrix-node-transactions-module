@@ -812,7 +812,7 @@ async function make_withdrawal(req, res) {
         .json(main_helper.error_message("main account is not active"));
     }
 
-    if (accountType === "main") {
+    if (accountType === "ATAR") {
       if (mainAccount.balance < amount) {
         return res.status(400).json(main_helper.error_message("insufficient funds"));
       }
