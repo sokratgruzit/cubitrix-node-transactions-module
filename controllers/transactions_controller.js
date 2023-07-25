@@ -830,7 +830,7 @@ async function make_withdrawal(req, res) {
           to: address_to,
           amount,
           tx_hash,
-          tx_type: "withdrawal",
+          tx_type: "withdraw",
           tx_currency: "ether",
           tx_status: "pending",
           tx_options: {
@@ -865,7 +865,7 @@ async function make_withdrawal(req, res) {
         to: address_to,
         amount,
         tx_hash,
-        tx_type: "withdrawal",
+        tx_type: "withdraw",
         tx_currency: "ether",
         tx_status: "pending",
         tx_options: {
