@@ -733,6 +733,9 @@ async function coinbase_webhooks(req, res) {
       );
     }
 
+    console.log(event?.data?.payments?.[0]?.value);
+    // console.log(event);
+
     if (event.type === "charge:failed") {
       try {
         const contract = new web3.eth.Contract(minABI, tokenAddress);
@@ -830,7 +833,7 @@ async function make_withdrawal(req, res) {
           to: address_to,
           amount,
           tx_hash,
-          tx_type: "withdrawal",
+          tx_type: "withdraw",
           tx_currency: "ether",
           tx_status: "pending",
           tx_options: {
@@ -865,7 +868,7 @@ async function make_withdrawal(req, res) {
         to: address_to,
         amount,
         tx_hash,
-        tx_type: "withdrawal",
+        tx_type: "withdraw",
         tx_currency: "ether",
         tx_status: "pending",
         tx_options: {
