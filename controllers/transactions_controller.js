@@ -9,6 +9,7 @@ const {
   referral_binary_users,
   deposit_requests,
   options,
+  treasuries,
   stakes,
 } = require("@cubitrix/models");
 const moment = require("moment");
@@ -800,10 +801,13 @@ async function make_withdrawal(req, res) {
   }
   address = address.toLowerCase();
   try {
-    const mainAccount = await accounts.findOne({
-      account_owner: address,
-      account_category: "main",
-    });
+    let [mainAccount, treasury] = await Promise.all([
+      accounts.findOne({
+        account_owner: address,
+        account_category: "main",
+      }),
+      treasuries.findOne(),
+    ]);
 
     if (!mainAccount) {
       return res.status(400).json(main_helper.error_message("main account not found"));
@@ -819,6 +823,17 @@ async function make_withdrawal(req, res) {
       if (mainAccount.balance < amount) {
         return res.status(400).json(main_helper.error_message("insufficient funds"));
       }
+
+      const currentWithdrawalAmount = treasury.withdrawals["ATR"] || 0;
+      const currentIncomingAmount = treasury.incoming["ATR"] || 0;
+
+      if (currentWithdrawalAmount + amount > currentIncomingAmount) {
+        return main_helper.error_response(
+          res,
+          "Withdrawal with this amount is not possible at the moment",
+        );
+      }
+
       let tx_hash_generated = global_helper.make_hash();
       let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
@@ -852,6 +867,16 @@ async function make_withdrawal(req, res) {
 
     if (mainAccount.assets[accountType] < amount) {
       return res.status(400).json(main_helper.error_message("insufficient funds"));
+    }
+
+    const currency = accountType?.toUpperCase();
+    const currentWithdrawalAmount = treasury.withdrawals[currency] || 0;
+    const currentIncomingAmount = treasury.incoming[currency] || 0;
+    if (currentWithdrawalAmount + amount > currentIncomingAmount) {
+      return main_helper.error_response(
+        res,
+        "Insufficient funds for withdrawal in treasury",
+      );
     }
 
     let tx_hash_generated = global_helper.make_hash();
