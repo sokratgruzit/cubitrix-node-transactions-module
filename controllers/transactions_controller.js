@@ -875,7 +875,7 @@ async function make_withdrawal(req, res) {
     if (currentWithdrawalAmount + amount > currentIncomingAmount) {
       return main_helper.error_response(
         res,
-        "Insufficient funds for withdrawal in treasury",
+        "Withdrawal with this amount is not possible at the moment",
       );
     }
 
