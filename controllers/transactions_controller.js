@@ -861,7 +861,7 @@ async function make_withdrawal(req, res) {
           {},
           {
             $inc: {
-              [`pendingWithdrawals.ATR`]: amount,
+              [`pendingWithdrawals.ATR`]: Number(amount),
             },
           },
         ),
@@ -915,7 +915,7 @@ async function make_withdrawal(req, res) {
         {},
         {
           $inc: {
-            [`pendingWithdrawals.${currency}`]: amount,
+            [`pendingWithdrawals.${currency}`]: Number(amount),
           },
         },
       ),
