@@ -824,10 +824,10 @@ async function make_withdrawal(req, res) {
         return res.status(400).json(main_helper.error_message("insufficient funds"));
       }
 
-      const currentWithdrawalAmount = treasury.withdrawals["ATR"] || 0;
+      const pendingWithdrawalAmount = treasury.pendingWithdrawals["ATR"] || 0;
       const currentIncomingAmount = treasury.incoming["ATR"] || 0;
 
-      if (currentWithdrawalAmount + amount > currentIncomingAmount) {
+      if (pendingWithdrawalAmount + amount > currentIncomingAmount) {
         return main_helper.error_response(
           res,
           "Withdrawal with this amount is not possible at the moment",
@@ -857,6 +857,14 @@ async function make_withdrawal(req, res) {
             rate,
           },
         }),
+        treasuries.findOneAndUpdate(
+          {},
+          {
+            $inc: {
+              [`pendingWithdrawals.ATR`]: amount,
+            },
+          },
+        ),
       ]);
       return res.status(200).json({
         success: true,
@@ -870,9 +878,10 @@ async function make_withdrawal(req, res) {
     }
 
     const currency = accountType?.toUpperCase();
-    const currentWithdrawalAmount = treasury.withdrawals[currency] || 0;
+    const pendingWithdrawalAmount = treasury.pendingWithdrawals[currency] || 0;
+
     const currentIncomingAmount = treasury.incoming[currency] || 0;
-    if (currentWithdrawalAmount + amount > currentIncomingAmount) {
+    if (pendingWithdrawalAmount + amount > currentIncomingAmount) {
       return main_helper.error_response(
         res,
         "Withdrawal with this amount is not possible at the moment",
@@ -902,6 +911,14 @@ async function make_withdrawal(req, res) {
           rate,
         },
       }),
+      treasuries.findOneAndUpdate(
+        {},
+        {
+          $inc: {
+            [`pendingWithdrawals.${currency}`]: amount,
+          },
+        },
+      ),
     ]);
 
     return res.status(200).json({
