@@ -827,7 +827,7 @@ async function make_withdrawal(req, res) {
       const pendingWithdrawalAmount = treasury.pendingWithdrawals["ATR"] || 0;
       const currentIncomingAmount = treasury.incoming["ATR"] || 0;
 
-      if (pendingWithdrawalAmount + amount > currentIncomingAmount) {
+      if (pendingWithdrawalAmount + Number(amount) > currentIncomingAmount) {
         return res
           .status(400)
           .json(
@@ -884,7 +884,7 @@ async function make_withdrawal(req, res) {
     const pendingWithdrawalAmount = treasury.pendingWithdrawals[currency] || 0;
 
     const currentIncomingAmount = treasury.incoming[currency] || 0;
-    if (pendingWithdrawalAmount + amount > currentIncomingAmount) {
+    if (pendingWithdrawalAmount + Number(amount) > currentIncomingAmount) {
       return res
         .status(400)
         .json(
