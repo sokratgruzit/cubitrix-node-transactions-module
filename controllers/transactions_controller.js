@@ -810,18 +810,22 @@ async function make_withdrawal(req, res) {
     ]);
 
     if (!mainAccount) {
-      return res.status(400).json(main_helper.error_message("main account not found"));
+      return res
+        .status(400)
+        .json(main_helper.error_response(res, "main account not found"));
     }
 
     if (!mainAccount.active) {
       return res
         .status(400)
-        .json(main_helper.error_message("main account is not active"));
+        .json(main_helper.error_response(res, "main account is not active"));
     }
 
     if (accountType === "ATAR") {
       if (mainAccount.balance < amount) {
-        return res.status(400).json(main_helper.error_message("insufficient funds"));
+        return res
+          .status(400)
+          .json(main_helper.error_response(res, "insufficient funds"));
       }
 
       const pendingWithdrawalAmount = treasury.pendingWithdrawals["ATR"] || 0;
@@ -874,7 +878,7 @@ async function make_withdrawal(req, res) {
     }
 
     if (mainAccount.assets[accountType] < amount) {
-      return res.status(400).json(main_helper.error_message("insufficient funds"));
+      return res.status(400).json(main_helper.error_response("insufficient funds"));
     }
 
     const currency = accountType?.toUpperCase();
