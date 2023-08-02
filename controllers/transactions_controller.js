@@ -65,7 +65,9 @@ async function get_transactions_of_user(req, res) {
             {
               $match: {
                 to: { $in: addr_arr },
-                tx_type: { $in: ["transfer", "deposit", "bonus", "internal_transfer"] },
+                tx_type: {
+                  $in: ["deposit", "bonus", "transfer"],
+                },
               },
             },
             {
@@ -80,7 +82,9 @@ async function get_transactions_of_user(req, res) {
             {
               $match: {
                 from: { $in: addr_arr },
-                tx_type: { $in: ["transfer", "internal_transfer"] },
+                tx_type: {
+                  $in: ["withdraw", "transfer"],
+                },
               },
             },
             {
