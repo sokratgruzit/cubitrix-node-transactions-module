@@ -886,8 +886,9 @@ async function make_withdrawal(req, res) {
 
     const currency = accountType?.toUpperCase();
     const pendingWithdrawalAmount = treasury.pendingWithdrawals[currency] || 0;
-
     const currentIncomingAmount = treasury.incoming[currency] || 0;
+
+    console.log(pendingWithdrawalAmount, amount, currentIncomingAmount);
     if (pendingWithdrawalAmount + Number(amount) > currentIncomingAmount) {
       return res
         .status(400)
