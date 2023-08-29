@@ -40,12 +40,11 @@ async function get_transactions_of_user(req, res) {
     const account_type = req_body?.account ? req_body?.account : "all";
     const method_type = req_body?.type ? req_body?.type : "all";
     const date_type = req_body?.time ? req_body?.time : "all";
-    let address = req_body?.address;
-    if (!address) {
-      return res.status(500).send({ success: false, message: "address not provided" });
-    }
+    let address = req.address;
 
-    address = address.toLowerCase();
+    if (!address) {
+      return res.status(500).send({ success: false, message: "you are not logged in" });
+    }
 
     const mainAccount = await accounts.findOne({
       account_owner: address,
@@ -250,7 +249,6 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
 async function make_transfer(req, res) {
   try {
     let {
-      from,
       to,
       amount,
       tx_currency,
@@ -258,6 +256,8 @@ async function make_transfer(req, res) {
       account_category_from,
       tx_type = "transfer",
     } = req.body;
+
+    let from = req.address;
 
     if (
       !from &&
@@ -270,7 +270,6 @@ async function make_transfer(req, res) {
     ) {
       return main_helper.error_response(res, "please provide all necessary values");
     }
-    if (from) from = from.toLowerCase();
     if (to) to = to.toLowerCase();
 
     let tx_hash_generated = global_helper.make_hash();
@@ -530,11 +529,11 @@ async function get_tx_type(tx_type) {
 // Pending Deposit Transaction
 async function pending_deposit_transaction(req, res) {
   try {
-    let { from, amount, amountTransferedFrom, receivePaymentAddress, startDate } =
-      req.body;
+    let { amount, amountTransferedFrom, receivePaymentAddress, startDate } = req.body;
 
-    if (!from) return res.status(400).json(main_helper.error_message("from is required"));
-    from = from.toLowerCase();
+    let from = req.address;
+    if (!from)
+      return res.status(400).json(main_helper.error_message("you are not logged in"));
 
     const tx_hash = global_helper.make_hash();
     let account_main = await accounts.findOne({
@@ -567,9 +566,11 @@ async function pending_deposit_transaction(req, res) {
 // Create Coinbase Deposit Transaction
 async function coinbase_deposit_transaction(req, res) {
   try {
-    let { from, amount } = req.body;
-    if (!from) return res.status(400).json(main_helper.error_message("from is required"));
-    from = from.toLowerCase();
+    let { amount } = req.body;
+    let from = req.address;
+    if (!from) {
+      return res.status(400).json(main_helper.error_message("you are not logged in"));
+    }
     const tx_hash = global_helper.make_hash();
     let account_main = await accounts.findOne({
       $or: [{ account_owner: from }, { address: from }],
@@ -799,11 +800,12 @@ async function coinbase_webhooks(req, res) {
 }
 
 async function make_withdrawal(req, res) {
-  let { address, address_to, amount, accountType, rate } = req.body;
+  let { address_to, amount, accountType, rate } = req.body;
+
+  let address = req.address;
   if (!address) {
-    return res.status(400).json({ error: "address is required" });
+    return res.status(400).json({ error: "you are not logged in" });
   }
-  address = address.toLowerCase();
   try {
     let [mainAccount, treasury] = await Promise.all([
       accounts.findOne({
@@ -946,12 +948,12 @@ async function make_withdrawal(req, res) {
 
 async function direct_deposit(req, res) {
   try {
-    let { address, hash } = req.body;
-    if (!address) {
-      return res.status(400).json({ error: "address is required" });
-    }
+    let { hash } = req.body;
 
-    address = address.toLowerCase();
+    let address = req.address;
+    if (!address) {
+      return res.status(400).json({ error: "you are not logged in" });
+    }
 
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
@@ -1024,10 +1026,12 @@ async function get_transaction_by_hash(req, res) {
 
 async function unstake_transaction(req, res) {
   try {
-    let { address, index } = req.body;
+    let { index } = req.body;
+
+    let address = req.address;
 
     if (!address)
-      return res.status(400).json(main_helper.error_message("address is required"));
+      return res.status(400).json(main_helper.error_message("you are not logged in"));
 
     if (typeof index !== "number")
       return res.status(400).json(main_helper.error_message("index is required"));
@@ -1083,12 +1087,12 @@ async function unstake_transaction(req, res) {
 
 async function exchange(req, res) {
   try {
-    let { address, fromAccType, fromAmount, toAccType, toAmount } = req.body;
+    let { fromAccType, fromAmount, toAccType, toAmount } = req.body;
+
+    let address = req.address;
 
     if (!address)
-      return res.status(400).send({ success: false, message: "address is required" });
-
-    address = address.toLowerCase();
+      return res.status(400).send({ success: false, message: "you are not logged in" });
 
     const mainAccount = await accounts.findOne({
       account_owner: address,
