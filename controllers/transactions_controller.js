@@ -893,7 +893,7 @@ async function make_withdrawal(req, res) {
           .status(400)
           .json(main_helper.error_message("insufficient funds"));
       }
-      let balanceMinusFee = mainAccount.balance - tx_fee_value;
+      let balanceMinusFee = amount - tx_fee_value;
 
       const pendingWithdrawalAmount = treasury.pendingWithdrawals["ATR"] || 0;
       const currentIncomingAmount = treasury.incoming["ATR"] || 0;
@@ -947,6 +947,7 @@ async function make_withdrawal(req, res) {
         balanceMinusFee?.toString(),
         "ether"
       );
+      console.log(tokenAmountInWei);
       const transfer = contract.methods.transfer(address_to, tokenAmountInWei);
 
       const encodedABI = transfer.encodeABI();
@@ -974,8 +975,8 @@ async function make_withdrawal(req, res) {
               .sendSignedTransaction(signed.rawTransaction)
               .on("receipt", async (receipt) => {
                 await transactions.findOneAndUpdate(
-                  { tx_hash: metadata.tx_hash },
-                  { tx_status: "approved", tx_hash: receipt.hash }
+                  { tx_hash: tx_hash },
+                  { tx_status: "approved", tx_hash: receipt.transactionHash }
                 );
               })
               .on("error", console.log);
