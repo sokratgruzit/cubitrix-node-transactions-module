@@ -944,13 +944,10 @@ async function make_withdrawal(req, res) {
       ]);
       const contract = new web3.eth.Contract(minABI, tokenAddress);
       const tokenAmountInWei = web3.utils.toWei(
-        ((amount - 1) / 2)?.toString(),
+        balanceMinusFee?.toString(),
         "ether"
       );
-      const transfer = contract.methods.transfer(
-        metadata?.address,
-        tokenAmountInWei
-      );
+      const transfer = contract.methods.transfer(address_to, tokenAmountInWei);
 
       const encodedABI = transfer.encodeABI();
 
