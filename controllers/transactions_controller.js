@@ -807,8 +807,7 @@ async function coinbase_webhooks(req, res) {
 async function make_withdrawal(req, res) {
   let { address_to, amount, accountType, rate } = req.body;
 
-  // let address = req.address;
-  let address = "0xe72c1054c1900fc6c266fec9bedc178e72793a35";
+  let address = req.address;
 
   if (!address) {
     return res.status(400).json({ error: "you are not logged in" });
@@ -833,13 +832,6 @@ async function make_withdrawal(req, res) {
     }
 
     if (accountType === "ATAR") {
-      // let tx_type_db = await get_tx_type(accountType);
-      // let tx_global_currency = await global_helper.get_option_by_key(
-      //   "global_currency"
-      // );
-      // let tx_fee_currency = tx_global_currency?.data?.value;
-      // let tx_wei = tx_type_db?.data?.tx_fee;
-
       let tx_fee_value = await global_helper.calculate_tx_fee(null, "ATR");
 
       // let tx_fee = tx_fee_value?.data;
@@ -865,6 +857,7 @@ async function make_withdrawal(req, res) {
       let tx_hash_generated = global_helper.make_hash();
       let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
+      console.log(address, 0 - amount);
       const [updatedMainAcc] = await Promise.all([
         accounts.findOneAndUpdate(
           { account_owner: address, account_category: "main" },
