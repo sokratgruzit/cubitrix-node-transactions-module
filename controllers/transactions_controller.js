@@ -952,8 +952,6 @@ async function make_withdrawal(req, res) {
 
       const encodedABI = transfer.encodeABI();
 
-      const gasPrice = await web3.eth.getGasPrice();
-
       const tx = {
         from: account1,
         to: address_to,
