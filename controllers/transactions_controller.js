@@ -857,7 +857,6 @@ async function make_withdrawal(req, res) {
       let tx_hash_generated = global_helper.make_hash();
       let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
-      console.log(address, 0 - amount);
       const [updatedMainAcc] = await Promise.all([
         accounts.findOneAndUpdate(
           { account_owner: address, account_category: "main" },
