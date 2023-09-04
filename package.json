@@ -12,7 +12,7 @@
   "dependencies": {
     "@cubitrix/models": ">=0.0.82",
     "axios": ">=1.4.0",
-    "coinbase-commerce-node": "^1.0.4",
+    "coinbase-commerce-node": "^1.0.5",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",

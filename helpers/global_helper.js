@@ -25,6 +25,9 @@ async function get_option_by_key(key) {
 }
 async function calculate_tx_fee(wei = 21000, currency = "ether") {
   try {
+    if (currency == "ATR") {
+      return 2;
+    }
     const value = Web3.utils.fromWei(wei.toString(), currency);
     return main_helper.return_data(true, value);
   } catch (e) {
@@ -36,7 +39,8 @@ async function calculate_tx_fee(wei = 21000, currency = "ether") {
 
 function make_hash(length = 66) {
   let result = "";
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const charactersLength = characters.length;
   let counter = 0;
   while (counter < length) {
@@ -48,7 +52,9 @@ function make_hash(length = 66) {
 // get account type by name
 async function get_account_by_address(address) {
   try {
-    let account_address = await account_meta.findOne({ address: address }).exec();
+    let account_address = await account_meta
+      .findOne({ address: address })
+      .exec();
 
     if (account_address) {
       let type_id = account_address._id;
