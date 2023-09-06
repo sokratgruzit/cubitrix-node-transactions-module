@@ -42,6 +42,10 @@ async function get_transactions_of_user(req, res) {
     const date_type = req_body?.time ? req_body?.time : "all";
     let address = req.address;
 
+    console.log("Account type:", account_type);
+    console.log("Method type:", method_type);
+    console.log("Date type:", date_type);
+
     if (!address) {
       return res.status(500).send({ success: false, message: "you are not logged in" });
     }
@@ -152,6 +156,7 @@ async function get_transactions_of_user(req, res) {
     if (method_type != "all" && method_type != null) {
       if (method_type == "bonus") {
         let referral_types = [
+          "bonus",
           "referral_bonus_uni_level",
           "referral_bonus_binary_level_1",
           "referral_bonus_binary_level_2",
