@@ -347,6 +347,13 @@ async function make_transfer(req, res) {
     if (account_to.active === false) {
       return main_helper.error_response(res, "Cannot transfer to this account");
     }
+    let tx_options = undefined;
+    tx_options = {
+      account_category_to,
+      account_category_from,
+    };
+    let updatedAcc, createdTransaction, updatedAcc2;
+
     if (
       account_category_from === "trade" &&
       account_from.balance - mainAccount.stakedTotal < parseFloat(amount)
@@ -355,68 +362,72 @@ async function make_transfer(req, res) {
         res,
         "Insufficient funds or locked funds"
       );
-    } else if (account_from.balance >= parseFloat(amount)) {
-      let tx_options = undefined;
-      tx_options = {
-        account_category_to,
-        account_category_from,
-      };
-      let updatedAcc, createdTransaction, updatedAcc2;
-      if (tx_currency != "ether") {
-        let decreaseBalance = {};
-        let increaseBalance = {};
+    } else if (
+      tx_currency == "ether" &&
+      account_from.balance >= parseFloat(amount)
+    ) {
+      [updatedAcc, createdTransaction, updatedAcc2] = await Promise.all([
+        accounts.findOneAndUpdate(
+          { account_owner: from, account_category: account_category_from },
+          { $inc: { balance: 0 - parseFloat(amount) } },
+          { new: true }
+        ),
+        transactions.create({
+          from,
+          to,
+          amount,
+          tx_hash,
+          tx_status: "approved",
+          tx_type,
+          denomination,
+          tx_currency,
+          tx_options,
+        }),
+        accounts.findOneAndUpdate(
+          { account_owner: to, account_category: account_category_to },
+          { $inc: { balance: amount } },
+          { new: true }
+        ),
+      ]);
 
-        decreaseBalance[`assets.${tx_currency}`] = 0 - parseFloat(amount);
-        increaseBalance[`assets.${tx_currency}`] = parseFloat(amount);
-        [updatedAcc, createdTransaction, updatedAcc2] = await Promise.all([
-          accounts.findOneAndUpdate(
-            { account_owner: from, account_category: account_category_from },
-            { $inc: decreaseBalance },
-            { new: true }
-          ),
-          transactions.create({
-            from,
-            to,
-            amount,
-            tx_hash,
-            tx_status: "approved",
-            tx_type,
-            denomination,
-            tx_currency,
-            tx_options,
-          }),
-          accounts.findOneAndUpdate(
-            { account_owner: to, account_category: account_category_to },
-            { $inc: increaseBalance },
-            { new: true }
-          ),
-        ]);
-      } else {
-        [updatedAcc, createdTransaction, updatedAcc2] = await Promise.all([
-          accounts.findOneAndUpdate(
-            { account_owner: from, account_category: account_category_from },
-            { $inc: { balance: 0 - parseFloat(amount) } },
-            { new: true }
-          ),
-          transactions.create({
-            from,
-            to,
-            amount,
-            tx_hash,
-            tx_status: "approved",
-            tx_type,
-            denomination,
-            tx_currency,
-            tx_options,
-          }),
-          accounts.findOneAndUpdate(
-            { account_owner: to, account_category: account_category_to },
-            { $inc: { balance: amount } },
-            { new: true }
-          ),
-        ]);
-      }
+      return main_helper.success_response(res, {
+        message: "successfull transaction",
+        data: { createdTransaction, updatedAcc, updatedAcc2 },
+      });
+    } else if (
+      tx_currency != "ether" &&
+      account_from.assets &&
+      account_from.assets[tx_currency] &&
+      account_from.assets[tx_currency] >= parseFloat(amount)
+    ) {
+      let decreaseBalance = {};
+      let increaseBalance = {};
 
+      decreaseBalance[`assets.${tx_currency}`] = 0 - parseFloat(amount);
+      increaseBalance[`assets.${tx_currency}`] = parseFloat(amount);
+      [updatedAcc, createdTransaction, updatedAcc2] = await Promise.all([
+        accounts.findOneAndUpdate(
+          { account_owner: from, account_category: account_category_from },
+          { $inc: decreaseBalance },
+          { new: true }
+        ),
+        transactions.create({
+          from,
+          to,
+          amount,
+          tx_hash,
+          tx_status: "approved",
+          tx_type,
+          denomination,
+          tx_currency,
+          tx_options,
+        }),
+        accounts.findOneAndUpdate(
+          { account_owner: to, account_category: account_category_to },
+          { $inc: increaseBalance },
+          { new: true }
+        ),
+      ]);
       return main_helper.success_response(res, {
         message: "successfull transaction",
         data: { createdTransaction, updatedAcc, updatedAcc2 },
