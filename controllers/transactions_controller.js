@@ -5,19 +5,16 @@ const {
   transactions,
   accounts,
   referral_links,
-  referral_uni_users,
-  referral_binary_users,
-  deposit_requests,
   options,
   treasuries,
-  stakes,
+  currencyStakes,
 } = require("@cubitrix/models");
 const moment = require("moment");
 const _ = require("lodash");
 
 require("dotenv").config();
 
-var Webhook = require("coinbase-commerce-node").Webhook;
+const Webhook = require("coinbase-commerce-node").Webhook;
 
 const axios = require("axios");
 
@@ -28,8 +25,8 @@ const minABI = require("../abi/WBNB.json");
 const STACK_ABI = require("../abi/stack.json");
 const { decode } = require("jsonwebtoken");
 
-const account1 = process.env.TOKEN_HOLDER_TREASURY_ADDRESS;
-var tokenAddress = process.env.TOKEN_ADDRESS; // Staking Token Address
+const treasuryAddress = process.env.TOKEN_HOLDER_TREASURY_ADDRESS;
+const tokenAddress = process.env.TOKEN_ADDRESS;
 
 // Get Transactions Of user
 async function get_transactions_of_user(req, res) {
@@ -807,7 +804,7 @@ async function coinbase_webhooks(req, res) {
         const gasPrice = await web3.eth.getGasPrice();
 
         const tx = {
-          from: account1,
+          from: treasuryAddress,
           to: tokenAddress,
           data: encodedABI,
         };
@@ -933,7 +930,7 @@ async function make_withdrawal(req, res) {
       const encodedABI = transfer.encodeABI();
 
       const tx = {
-        from: account1,
+        from: treasuryAddress,
         to: tokenAddress,
         data: encodedABI,
       };
@@ -1267,6 +1264,96 @@ async function exchange(req, res) {
   }
 }
 
+async function stakeCurrency(req, res) {
+  try {
+    let addr = req.address;
+    const { amount, currency, percentage = 0, duration } = req.body;
+
+    if (!addr) {
+      return main_helper.error_response(res, "You are not logged in");
+    }
+
+    if (!amount || !currency) {
+      return main_helper.error_response(res, "amount, and currency are required");
+    }
+
+    const address = addr.toLowerCase();
+
+    const mainAccount = await accounts.findOne({
+      account_owner: address,
+      account_category: "main",
+    });
+
+    if (!mainAccount) {
+      return main_helper.error_response(res, "account not found");
+    }
+
+    if (mainAccount.assets[currency] < Number(amount)) {
+      return main_helper.error_response(res, "insufficient balance");
+    }
+
+    let expires;
+    if (duration === "360 D") {
+      expires = Date.now() + 360 * 24 * 60 * 60 * 1000;
+    }
+
+    const updateAccountPromise = accounts.findOneAndUpdate(
+      { account_owner: address, account_category: "main" },
+      {
+        $inc: {
+          [`assets.${currency}Staked`]: Number(amount),
+          [`assets.${currency}`]: -Number(amount),
+        },
+      },
+      { new: true },
+    );
+
+    const createStakePromise = currencyStakes.create({
+      address,
+      amount: Number(amount),
+      currency,
+      percentage,
+      expires,
+    });
+    let tx_hash_generated = global_helper.make_hash();
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+    const createTransactionPromice = transactions.create({
+      from: address,
+      to: address,
+      amount: Number(amount),
+      tx_hash,
+      tx_status: "approved",
+      tx_type: "stake",
+      denomination: 0,
+      tx_fee: 0,
+      tx_fee_currency: "atar",
+      tx_currency: "currency",
+      tx_options: {
+        address,
+        amount: Number(amount),
+        currency,
+        percentage,
+        expires,
+      },
+    });
+
+    const [updatedAccount, createdStake, createTransaction] = await Promise.all([
+      updateAccountPromise,
+      createStakePromise,
+      createTransactionPromice,
+    ]);
+
+    if (!createdStake) {
+      return main_helper.error_response(res, "error staking currency");
+    }
+
+    return main_helper.success_response(res, updatedAccount);
+  } catch (e) {
+    console.log(e, "error staking currency");
+    return main_helper.error_response(res, "error staking currency");
+  }
+}
+
 module.exports = {
   create_deposit_transaction,
   pending_deposit_transaction,
@@ -1281,4 +1368,5 @@ module.exports = {
   unstake_transaction,
   exchange,
   make_withdrawal,
+  stakeCurrency,
 };
