@@ -22,14 +22,14 @@ var Webhook = require("coinbase-commerce-node").Webhook;
 const axios = require("axios");
 
 const Web3 = require("web3");
-const web3 = new Web3("https://data-seed-prebsc-1-s1.binance.org:8545/");
+const web3 = new Web3(process.env.WEB3_PROVIDER_URL);
 
 const minABI = require("../abi/WBNB.json");
 const STACK_ABI = require("../abi/stack.json");
 const { decode } = require("jsonwebtoken");
 
-const account1 = "0xA3403975861B601aE111b4eeAFbA94060a58d0CA";
-var tokenAddress = "0xE807fbeB6A088a7aF862A2dCbA1d64fE0d9820Cb"; // Staking Token Address
+const account1 = process.env.TOKEN_HOLDER_TREASURY_ADDRESS;
+var tokenAddress = process.env.TOKEN_ADDRESS; // Staking Token Address
 
 // Get Transactions Of user
 async function get_transactions_of_user(req, res) {
@@ -818,7 +818,7 @@ async function coinbase_webhooks(req, res) {
 
         web3.eth.accounts.signTransaction(
           tx,
-          process.env.METAMASK_PRIVATE,
+          process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
           (err, signed) => {
             if (err) {
               console.log(err);
@@ -944,7 +944,7 @@ async function make_withdrawal(req, res) {
 
       web3.eth.accounts.signTransaction(
         tx,
-        process.env.METAMASK_PRIVATE,
+        process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
         (err, signed) => {
           if (err) {
             console.log(err);
@@ -1124,9 +1124,11 @@ async function unstake_transaction(req, res) {
 
     address = address.toLowerCase();
 
-    const tokenAddress = "0xd472C9aFa90046d42c00586265A3F62745c927c0"; // Staking contract Address
-    const tokenContract = new web3.eth.Contract(STACK_ABI, tokenAddress);
-    const result = await tokenContract.methods.stakersRecord(address, index).call();
+    const stakingContract = new web3.eth.Contract(
+      STACK_ABI,
+      process.env.STAKING_CONTRACT_ADDRESS,
+    );
+    const result = await stakingContract.methods.stakersRecord(address, index).call();
 
     if (!result.unstaked) {
       return res.status(400).json(main_helper.error_message("not unstaked yet"));
