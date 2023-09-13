@@ -1361,9 +1361,9 @@ async function stakeCurrency(req, res) {
 
 async function get_currency_stakes(req, res) {
   try {
-    let addr = req.address;
+    let address = req.address;
 
-    if (!addr) {
+    if (!address) {
       return main_helper.error_response(res, "You are not logged in");
     }
 
