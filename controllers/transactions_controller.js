@@ -1295,6 +1295,12 @@ async function stakeCurrency(req, res) {
     let expires;
     if (duration === "360 D") {
       expires = Date.now() + 360 * 24 * 60 * 60 * 1000;
+    } else if (duration === "180 D") {
+      expires = Date.now() + 180 * 24 * 60 * 60 * 1000;
+    } else if (duration === "90 D") {
+      expires = Date.now() + 90 * 24 * 60 * 60 * 1000;
+    } else if (duration === "30 D") {
+      expires = Date.now() + 30 * 24 * 60 * 60 * 1000;
     }
 
     const updateAccountPromise = accounts.findOneAndUpdate(
@@ -1329,7 +1335,6 @@ async function stakeCurrency(req, res) {
       tx_fee_currency: "atar",
       tx_currency: "currency",
       tx_options: {
-        address,
         amount: Number(amount),
         currency,
         percentage,
@@ -1354,6 +1359,23 @@ async function stakeCurrency(req, res) {
   }
 }
 
+async function get_currency_stakes(req, res) {
+  try {
+    let addr = req.address;
+
+    if (!addr) {
+      return main_helper.error_response(res, "You are not logged in");
+    }
+
+    const stakes = await currencyStakes.find({ address });
+
+    return main_helper.success_response(res, stakes);
+  } catch (e) {
+    console.log(e);
+    return main_helper.error_response(res, "error getting currency stakes");
+  }
+}
+
 module.exports = {
   create_deposit_transaction,
   pending_deposit_transaction,
@@ -1369,4 +1391,5 @@ module.exports = {
   exchange,
   make_withdrawal,
   stakeCurrency,
+  get_currency_stakes,
 };
