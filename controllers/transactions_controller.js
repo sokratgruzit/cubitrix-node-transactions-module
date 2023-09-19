@@ -9,6 +9,7 @@ const {
   treasuries,
   currencyStakes,
   account_meta,
+  verify_txs,
 } = require("@cubitrix/models");
 const moment = require("moment");
 const _ = require("lodash");
@@ -346,7 +347,7 @@ async function make_transfer(req, res) {
           verificationCode,
         );
 
-        await Verification.create({
+        await verify_txs.create({
           from,
           to,
           amount,
@@ -415,7 +416,7 @@ async function make_transfer(req, res) {
           verificationCode,
         );
 
-        await Verification.create({
+        await verify_txs.create({
           from,
           to,
           amount,
