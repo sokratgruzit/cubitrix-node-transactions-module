@@ -2,6 +2,17 @@ const main_helper = require("../helpers/index");
 var Web3 = require("web3");
 const { options, accounts, account_meta } = require("@cubitrix/models");
 const { ObjectId } = require("mongodb");
+
+var nodemailer = require("nodemailer");
+
+var transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.SENDER_EMAIL,
+    pass: process.env.SENDER_EMAIL_PASSWORD,
+  },
+});
+
 async function get_option_by_key(key) {
   try {
     let option = await options.findOne({ key });
