@@ -29,6 +29,10 @@ router.post(
 
 router.post("/get_transaction_by_hash", transactions_controller.get_transaction_by_hash);
 router.post("/make_transfer", transactions_controller.make_transfer);
+router.post(
+  "/verify_external_transaction",
+  transactions_controller.verify_external_transaction,
+);
 
 router.post("/direct_deposit", transactions_controller.direct_deposit);
 router.post("/unstake_transaction", transactions_controller.unstake_transaction);

@@ -360,7 +360,7 @@ async function make_transfer(req, res) {
           code: verificationCode,
         });
 
-        if (emailStatus === "Email sent") {
+        if (emailStatus.message === "Email sent") {
           return main_helper.success_response(res, "Verification code has been sent");
         } else {
           return main_helper.error_response(res, emailStatus);
@@ -428,8 +428,7 @@ async function make_transfer(req, res) {
           tx_options,
           code: verificationCode,
         });
-
-        if (emailStatus === "Email sent") {
+        if (emailStatus.message === "Email sent") {
           return main_helper.success_response(res, "Verification code has been sent");
         } else {
           return main_helper.error_response(res, emailStatus);
@@ -455,6 +454,146 @@ async function make_transfer(req, res) {
         }),
         accounts.findOneAndUpdate(
           { account_owner: to, account_category: account_category_to },
+          { $inc: { balance: amount } },
+          { new: true },
+        ),
+      ]);
+
+      return main_helper.success_response(res, {
+        message: "successfull transaction",
+        data: { createdTransaction, updatedAcc },
+      });
+    } else {
+      return main_helper.error_response(res, "Insufficient funds");
+    }
+  } catch (e) {
+    console.log(e.message);
+    return main_helper.error_response(res, "error saving transaction");
+  }
+}
+
+async function verify_external_transaction(req, res) {
+  try {
+    address = req.address;
+    const { code } = req.body;
+
+    if (!address) {
+      return main_helper.error_response(res, "you are not logged in");
+    }
+
+    if (!code) {
+      return main_helper.error_response(res, "Please provide verification code");
+    }
+
+    const verifiedTx = await verify_txs.findOne({
+      from: address,
+      code,
+    });
+
+    if (!verifiedTx) {
+      return main_helper.error_response(res, "Invalid verification code");
+    }
+
+    let { to, amount, tx_otpions, denomination, tx_type, tx_hash, tx_currency } =
+      verifiedTx;
+    let currency = verifiedTx?.tx_options?.currency;
+
+    let queries = [
+      accounts.findOne({
+        account_owner: to,
+        account_category: tx_otpions?.account_category_to,
+      }),
+      accounts.findOne({
+        account_owner: address,
+        account_category: tx_otpions?.account_category_from,
+      }),
+      accounts.findOne({
+        account_owner: address,
+        account_category: "main",
+      }),
+    ];
+
+    let [account_to, account_from, mainAccount] = await Promise.all(queries);
+
+    if (!mainAccount?.active) {
+      return main_helper.error_response(res, "Cannot transfer from this account");
+    }
+
+    if (!account_to || !account_from) {
+      return main_helper.error_response(
+        res,
+        "we dont have such address registered in our system.",
+      );
+    }
+
+    if (account_from.active === false) {
+      return main_helper.error_response(res, "Cannot transfer from this account");
+    }
+    if (account_to.active === false) {
+      return main_helper.error_response(res, "Cannot transfer to this account");
+    }
+    if (currency) {
+      if (
+        (account_from.assets[currency],
+        account_from.assets[currency] >= parseFloat(amount))
+      ) {
+        let decreaseBalance = {};
+        let increaseBalance = {};
+        decreaseBalance[`assets.${currency}`] = 0 - parseFloat(amount);
+        increaseBalance[`assets.${currency}`] = parseFloat(amount);
+        [updatedAcc, createdTransaction, updatedAcc2] = await Promise.all([
+          accounts.findOneAndUpdate(
+            {
+              account_owner: address,
+              account_category: tx_options?.account_category_from,
+            },
+            { $inc: decreaseBalance },
+            { new: true },
+          ),
+          transactions.create({
+            from: address,
+            to,
+            amount,
+            tx_hash,
+            tx_status: "approved",
+            tx_type,
+            denomination,
+            tx_currency,
+            tx_options,
+          }),
+          accounts.findOneAndUpdate(
+            { account_owner: to, account_category: tx_options?.account_category_to },
+            { $inc: increaseBalance },
+            { new: true },
+          ),
+        ]);
+        return main_helper.success_response(res, {
+          message: "successfull transaction",
+          data: { createdTransaction, updatedAcc, updatedAcc2 },
+        });
+      } else {
+        return main_helper.error_response(res, "Insufficient funds");
+      }
+    } else if (account_from.balance >= parseFloat(amount)) {
+      const [updatedAcc, createdTransaction] = await Promise.all([
+        accounts.findOneAndUpdate(
+          { account_owner: address, account_category: tx_options?.account_category_from },
+          { $inc: { balance: 0 - parseFloat(amount) } },
+          { new: true },
+        ),
+        transactions.create({
+          from: address,
+          to,
+          amount,
+          tx_hash,
+          tx_status: "approved",
+          tx_type,
+          denomination,
+          tx_currency,
+          tx_options,
+        }),
+        accounts.findOneAndUpdate(
+          { account_owner: to, account_category: tx_options?.account_category_to },
           { $inc: { balance: amount } },
           { new: true },
         ),
@@ -1449,4 +1588,5 @@ module.exports = {
   make_withdrawal,
   stakeCurrency,
   get_currency_stakes,
+  verify_external_transaction,
 };
