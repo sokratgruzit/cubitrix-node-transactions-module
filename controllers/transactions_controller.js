@@ -494,20 +494,18 @@ async function verify_external_transaction(req, res) {
       return main_helper.error_response(res, "Invalid verification code");
     }
 
-    let { to, amount, tx_otpions, denomination, tx_type, tx_hash, tx_currency } =
+    let { to, amount, tx_options, denomination, tx_type, tx_hash, tx_currency } =
       verifiedTx;
-    let currency = verifiedTx?.tx_options?.currency;
-
-    console.log(to, address, tx_otpions);
+    let currency = tx_options?.currency;
 
     let queries = [
       accounts.findOne({
         account_owner: to,
-        account_category: tx_otpions?.account_category_to,
+        account_category: tx_options?.account_category_to,
       }),
       accounts.findOne({
         account_owner: address,
-        account_category: tx_otpions?.account_category_from,
+        account_category: tx_options?.account_category_from,
       }),
       accounts.findOne({
         account_owner: address,
@@ -521,7 +519,6 @@ async function verify_external_transaction(req, res) {
       return main_helper.error_response(res, "Cannot transfer from this account");
     }
 
-    console.log(account_to, account_from);
     if (!account_to || !account_from) {
       return main_helper.error_response(
         res,
