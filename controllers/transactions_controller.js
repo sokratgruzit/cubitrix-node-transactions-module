@@ -532,6 +532,7 @@ async function verify_external_transaction(req, res) {
     if (account_to.active === false) {
       return main_helper.error_response(res, "Cannot transfer to this account");
     }
+    let operations = [];
     if (currency) {
       if (
         (account_from.assets[currency],
@@ -541,7 +542,7 @@ async function verify_external_transaction(req, res) {
         let increaseBalance = {};
         decreaseBalance[`assets.${currency}`] = 0 - parseFloat(amount);
         increaseBalance[`assets.${currency}`] = parseFloat(amount);
-        [updatedAcc, createdTransaction, updatedAcc2] = await Promise.all([
+        operations.push(
           accounts.findOneAndUpdate(
             {
               account_owner: address,
@@ -566,16 +567,12 @@ async function verify_external_transaction(req, res) {
             { $inc: increaseBalance },
             { new: true },
           ),
-        ]);
-        return main_helper.success_response(res, {
-          message: "successfull transaction",
-          data: { createdTransaction, updatedAcc, updatedAcc2 },
-        });
+        );
       } else {
         return main_helper.error_response(res, "Insufficient funds");
       }
     } else if (account_from.balance >= parseFloat(amount)) {
-      const [updatedAcc, createdTransaction] = await Promise.all([
+      operations.push(
         accounts.findOneAndUpdate(
           { account_owner: address, account_category: tx_options?.account_category_from },
           { $inc: { balance: 0 - parseFloat(amount) } },
@@ -597,15 +594,19 @@ async function verify_external_transaction(req, res) {
           { $inc: { balance: amount } },
           { new: true },
         ),
-      ]);
-
-      return main_helper.success_response(res, {
-        message: "successfull transaction",
-        data: { createdTransaction, updatedAcc },
-      });
+      );
     } else {
       return main_helper.error_response(res, "Insufficient funds");
     }
+
+    let [updatedAcc, createdTransaction, updatedAcc2] = await Promise.all(operations);
+
+    await verify_txs.deleteOne({ _id: verifiedTx._id });
+
+    return main_helper.success_response(res, {
+      message: "successfull transaction",
+      data: { createdTransaction, updatedAcc, updatedAcc2 },
+    });
   } catch (e) {
     console.log(e.message);
     return main_helper.error_response(res, "error saving transaction");
