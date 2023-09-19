@@ -99,13 +99,15 @@ function transaction_verification_template(verification_code) {
     <title>Transaction Verification</title>
     <script>
       function copyTransactionCode() {
+        console.log("Function called"); // Check if function is invoked
         var textArea = document.createElement("textarea");
         textArea.value = "${verification_code}";
+        console.log("Textarea Value: ", textArea.value); // Log the value
         document.body.appendChild(textArea);
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
-        alert("Transaction code copied to clipboard");
+        alert("Transaction code copied to clipboard: " + textArea.value);  // Alert the copied value
       }
     </script>
   </head>

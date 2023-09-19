@@ -341,12 +341,11 @@ async function make_transfer(req, res) {
         currency,
       };
       if (to !== from) {
-        const verificationCode = global_helper.make_hash();
+        const verificationCode = global_helper.make_hash(6);
         const emailStatus = await global_helper.send_verification_mail(
           metaAccount?.email,
           verificationCode,
         );
-
         await verify_txs.create({
           from,
           to,
@@ -410,7 +409,7 @@ async function make_transfer(req, res) {
         account_category_from,
       };
       if (to !== from) {
-        const verificationCode = global_helper.make_hash();
+        const verificationCode = global_helper.make_hash(6);
         const emailStatus = await global_helper.send_verification_mail(
           metaAccount?.email,
           verificationCode,
