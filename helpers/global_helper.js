@@ -97,19 +97,16 @@ function transaction_verification_template(verification_code) {
   <html>
   <head>
     <title>Transaction Verification</title>
-    <script>
-      function copyTransactionCode() {
-        console.log("Function called"); // Check if function is invoked
-        var textArea = document.createElement("textarea");
-        textArea.value = "${verification_code}";
-        console.log("Textarea Value: ", textArea.value); // Log the value
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        alert("Transaction code copied to clipboard: " + textArea.value);  // Alert the copied value
+    <style>
+      .highlighted-box {
+        text-align: center;
+        font-size: 24px;
+        padding: 15px;
+        background-color: #f2f2f2;
+        border: 1px solid #ccc;
+        border-radius: 4px;
       }
-    </script>
+    </style>
   </head>
   <body>
     <table align="center" width="600" cellpadding="0" cellspacing="0" style="background-color: #fff; border-collapse: collapse;">
@@ -119,15 +116,13 @@ function transaction_verification_template(verification_code) {
           <p>Thanks for initiating a transfer. To complete your transaction, please enter the verification code below:</p>
           <table align="center" style="margin: 20px auto;">
             <tr>
-              <td style="text-align: center; font-size: 24px; padding: 15px;">
+              <td class="highlighted-box">
                 ${verification_code}
               </td>
             </tr>
             <tr>
               <td style="text-align: center;">
-                <button onclick="copyTransactionCode()" style="background-color: #4CAF50; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 18px;">
-                  Copy Verification Code
-                </button>
+                Copy the code above.
               </td>
             </tr>
           </table>
