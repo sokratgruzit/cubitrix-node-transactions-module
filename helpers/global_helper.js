@@ -39,8 +39,7 @@ async function calculate_tx_fee(wei = 21000, currency = "ether") {
 
 function make_hash(length = 66) {
   let result = "";
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const charactersLength = characters.length;
   let counter = 0;
   while (counter < length) {
@@ -52,9 +51,7 @@ function make_hash(length = 66) {
 // get account type by name
 async function get_account_by_address(address) {
   try {
-    let account_address = await account_meta
-      .findOne({ address: address })
-      .exec();
+    let account_address = await account_meta.findOne({ address: address }).exec();
 
     if (account_address) {
       let type_id = account_address._id;
@@ -66,9 +63,75 @@ async function get_account_by_address(address) {
   }
 }
 
+async function send_verification_mail(email, verification_code) {
+  try {
+    var mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: email,
+      subject: "Verify your transaction",
+      html: transaction_verification_template(verification_code),
+    };
+
+    await transporter.sendMail(mailOptions);
+    return main_helper.success_message("Email sent");
+  } catch (e) {
+    console.log(e);
+    return main_helper.error_message("sending email failed");
+  }
+}
+
+function transaction_verification_template(verification_code) {
+  return `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>Transaction Verification</title>
+    <script>
+      function copyTransactionCode() {
+        var textArea = document.createElement("textarea");
+        textArea.value = "${verification_code}";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert("Transaction code copied to clipboard");
+      }
+    </script>
+  </head>
+  <body>
+    <table align="center" width="600" cellpadding="0" cellspacing="0" style="background-color: #fff; border-collapse: collapse;">
+      <tr>
+        <td style="padding: 20px;">
+          <h1 style="text-align:center;">Transaction Verification at ${process.env.COMPANY_NAME}</h1>
+          <p>Thanks for initiating a transfer. To complete your transaction, please enter the verification code below:</p>
+          <table align="center" style="margin: 20px auto;">
+            <tr>
+              <td style="text-align: center; font-size: 24px; padding: 15px;">
+                ${verification_code}
+              </td>
+            </tr>
+            <tr>
+              <td style="text-align: center;">
+                <button onclick="copyTransactionCode()" style="background-color: #4CAF50; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 18px;">
+                  Copy Verification Code
+                </button>
+              </td>
+            </tr>
+          </table>
+          <p>If you encounter any issues or did not initiate this transfer, please contact us immediately at <a href="mailto:${process.env.COMPANY_EMAIL}">${process.env.COMPANY_EMAIL}</a></p>
+          <p><b>If you did not initiate this transaction, please disregard this email and contact our support. We apologize for any inconvenience this may have caused.</b></p>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>  
+  `;
+}
+
 module.exports = {
   get_option_by_key,
   calculate_tx_fee,
   make_hash,
   get_account_by_address,
+  send_verification_mail,
 };

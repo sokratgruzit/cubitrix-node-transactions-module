@@ -8,6 +8,7 @@ const {
   options,
   treasuries,
   currencyStakes,
+  account_meta,
 } = require("@cubitrix/models");
 const moment = require("moment");
 const _ = require("lodash");
@@ -303,9 +304,12 @@ async function make_transfer(req, res) {
         account_owner: from,
         account_category: "main",
       }),
+      account_meta.findOne({
+        address: from,
+      }),
     ];
 
-    let [account_to, account_from, mainAccount] = await Promise.all(queries);
+    let [account_to, account_from, mainAccount, metaAccount] = await Promise.all(queries);
 
     if (!mainAccount?.active) {
       return main_helper.error_response(res, "Cannot transfer from this account");
@@ -330,15 +334,41 @@ async function make_transfer(req, res) {
     ) {
       return main_helper.error_response(res, "Insufficient funds or locked funds");
     } else if (currency) {
+      let tx_options = {
+        account_category_from,
+        account_category_to,
+        currency,
+      };
+      if (to !== from) {
+        const verificationCode = global_helper.make_hash();
+        const emailStatus = await global_helper.send_verification_mail(
+          metaAccount?.email,
+          verificationCode,
+        );
+
+        await Verification.create({
+          from,
+          to,
+          amount,
+          tx_hash,
+          tx_status: "approved",
+          tx_type,
+          denomination,
+          tx_currency,
+          tx_options,
+          code: verificationCode,
+        });
+
+        if (emailStatus === "Email sent") {
+          return main_helper.success_response(res, "Verification code has been sent");
+        } else {
+          return main_helper.error_response(res, emailStatus);
+        }
+      }
       if (
         (account_from.assets[currency],
         account_from.assets[currency] >= parseFloat(amount))
       ) {
-        let tx_options = {
-          account_category_from,
-          account_category_to,
-          currency,
-        };
         let decreaseBalance = {};
         let increaseBalance = {};
         decreaseBalance[`assets.${currency}`] = 0 - parseFloat(amount);
@@ -374,11 +404,37 @@ async function make_transfer(req, res) {
         return main_helper.error_response(res, "Insufficient funds");
       }
     } else if (account_from.balance >= parseFloat(amount)) {
-      let tx_options = undefined;
-      tx_options = {
+      let tx_options = {
         account_category_to,
         account_category_from,
       };
+      if (to !== from) {
+        const verificationCode = global_helper.make_hash();
+        const emailStatus = await global_helper.send_verification_mail(
+          metaAccount?.email,
+          verificationCode,
+        );
+
+        await Verification.create({
+          from,
+          to,
+          amount,
+          tx_hash,
+          tx_status: "approved",
+          tx_type,
+          denomination,
+          tx_currency,
+          tx_options,
+          code: verificationCode,
+        });
+
+        if (emailStatus === "Email sent") {
+          return main_helper.success_response(res, "Verification code has been sent");
+        } else {
+          return main_helper.error_response(res, emailStatus);
+        }
+      }
+
       const [updatedAcc, createdTransaction] = await Promise.all([
         accounts.findOneAndUpdate(
           { account_owner: from, account_category: account_category_from },
