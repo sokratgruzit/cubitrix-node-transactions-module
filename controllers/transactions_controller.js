@@ -498,6 +498,8 @@ async function verify_external_transaction(req, res) {
       verifiedTx;
     let currency = verifiedTx?.tx_options?.currency;
 
+    console.log(to, address, tx_otpions);
+
     let queries = [
       accounts.findOne({
         account_owner: to,
@@ -519,6 +521,7 @@ async function verify_external_transaction(req, res) {
       return main_helper.error_response(res, "Cannot transfer from this account");
     }
 
+    console.log(account_to, account_from);
     if (!account_to || !account_from) {
       return main_helper.error_response(
         res,
