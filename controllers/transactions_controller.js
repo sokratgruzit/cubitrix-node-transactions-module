@@ -239,7 +239,7 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
       tx_fee,
       tx_fee_currency,
       tx_currency,
-      A1_price: ratesObj?.atr?.usd,
+      A1_price: ratesObj?.atr?.usd ?? 2,
     });
 
     return {
