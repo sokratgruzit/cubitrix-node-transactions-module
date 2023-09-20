@@ -10,6 +10,7 @@ const {
   currencyStakes,
   account_meta,
   verify_txs,
+  rates,
 } = require("@cubitrix/models");
 const moment = require("moment");
 const _ = require("lodash");
@@ -203,24 +204,29 @@ async function get_transactions_of_user(req, res) {
 // Create Manual Deposit Transaction
 async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
   try {
-    from = from.toLowerCase();
-    amount = parseFloat(amount);
-    let tx_hash_generated = global_helper.make_hash();
+    let from = from.toLowerCase();
+    let amount = parseFloat(amount);
 
+    let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
-    let tx_type_db = await get_tx_type(tx_type);
-    let tx_global_currency = await global_helper.get_option_by_key("global_currency");
+    const [tx_type_db, tx_global_currency, account_main, ratesObj] = await Promise.all([
+      get_tx_type(tx_type),
+      global_helper.get_option_by_key("global_currency"),
+      accounts.findOne({
+        account_owner: from,
+        account_category: "main",
+      }),
+      rates.findOne(),
+    ]);
+
     let tx_fee_currency = tx_global_currency?.data?.value;
     let tx_wei = tx_type_db?.data?.tx_fee;
-    let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
 
+    let tx_fee_value = await global_helper.calculate_tx_fee(tx_wei, tx_fee_currency);
     let tx_fee = tx_fee_value?.data;
+
     let denomination = 0;
-    let account_main = await accounts.findOne({
-      account_owner: from,
-      account_category: "main",
-    });
 
     const createdTransaction = await transactions.create({
       from,
@@ -233,6 +239,7 @@ async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
       tx_fee,
       tx_fee_currency,
       tx_currency,
+      A1_price: ratesObj?.atr?.usd,
     });
 
     return {
@@ -340,128 +347,57 @@ async function make_transfer(req, res) {
         account_category_to,
         currency,
       };
-      if (to !== from) {
-        const verificationCode = global_helper.make_hash(6);
-        const emailStatus = await global_helper.send_verification_mail(
-          metaAccount?.email,
-          verificationCode,
-        );
-        await verify_txs.create({
-          from,
-          to,
-          amount,
-          tx_hash,
-          tx_status: "approved",
-          tx_type,
-          denomination,
-          tx_currency,
-          tx_options,
-          code: verificationCode,
-        });
+      const verificationCode = global_helper.make_hash(6);
+      const emailStatus = await global_helper.send_verification_mail(
+        metaAccount?.email,
+        verificationCode,
+      );
+      await verify_txs.create({
+        from,
+        to,
+        amount,
+        tx_hash,
+        tx_status: "approved",
+        tx_type,
+        denomination,
+        tx_currency,
+        tx_options,
+        code: verificationCode,
+      });
 
-        if (emailStatus.message === "Email sent") {
-          return main_helper.success_response(res, "Verification code has been sent");
-        } else {
-          return main_helper.error_response(res, emailStatus);
-        }
-      }
-      if (
-        (account_from.assets[currency],
-        account_from.assets[currency] >= parseFloat(amount))
-      ) {
-        let decreaseBalance = {};
-        let increaseBalance = {};
-        decreaseBalance[`assets.${currency}`] = 0 - parseFloat(amount);
-        increaseBalance[`assets.${currency}`] = parseFloat(amount);
-        [updatedAcc, createdTransaction, updatedAcc2] = await Promise.all([
-          accounts.findOneAndUpdate(
-            { account_owner: from, account_category: account_category_from },
-            { $inc: decreaseBalance },
-            { new: true },
-          ),
-          transactions.create({
-            from,
-            to,
-            amount,
-            tx_hash,
-            tx_status: "approved",
-            tx_type,
-            denomination,
-            tx_currency,
-            tx_options,
-          }),
-          accounts.findOneAndUpdate(
-            { account_owner: to, account_category: account_category_to },
-            { $inc: increaseBalance },
-            { new: true },
-          ),
-        ]);
-        return main_helper.success_response(res, {
-          message: "successfull transaction",
-          data: { createdTransaction, updatedAcc, updatedAcc2 },
-        });
+      if (emailStatus.message === "Email sent") {
+        return main_helper.success_response(res, "Verification code has been sent");
       } else {
-        return main_helper.error_response(res, "Insufficient funds");
+        return main_helper.error_response(res, emailStatus);
       }
     } else if (account_from.balance >= parseFloat(amount)) {
       let tx_options = {
         account_category_to,
         account_category_from,
       };
-      if (to !== from) {
-        const verificationCode = global_helper.make_hash(6);
-        const emailStatus = await global_helper.send_verification_mail(
-          metaAccount?.email,
-          verificationCode,
-        );
+      const verificationCode = global_helper.make_hash(6);
+      const emailStatus = await global_helper.send_verification_mail(
+        metaAccount?.email,
+        verificationCode,
+      );
 
-        await verify_txs.create({
-          from,
-          to,
-          amount,
-          tx_hash,
-          tx_status: "approved",
-          tx_type,
-          denomination,
-          tx_currency,
-          tx_options,
-          code: verificationCode,
-        });
-        if (emailStatus.message === "Email sent") {
-          return main_helper.success_response(res, "Verification code has been sent");
-        } else {
-          return main_helper.error_response(res, emailStatus);
-        }
-      }
-
-      const [updatedAcc, createdTransaction] = await Promise.all([
-        accounts.findOneAndUpdate(
-          { account_owner: from, account_category: account_category_from },
-          { $inc: { balance: 0 - parseFloat(amount) } },
-          { new: true },
-        ),
-        transactions.create({
-          from,
-          to,
-          amount,
-          tx_hash,
-          tx_status: "approved",
-          tx_type,
-          denomination,
-          tx_currency,
-          tx_options,
-        }),
-        accounts.findOneAndUpdate(
-          { account_owner: to, account_category: account_category_to },
-          { $inc: { balance: amount } },
-          { new: true },
-        ),
-      ]);
-
-      return main_helper.success_response(res, {
-        message: "successfull transaction",
-        data: { createdTransaction, updatedAcc },
+      await verify_txs.create({
+        from,
+        to,
+        amount,
+        tx_hash,
+        tx_status: "approved",
+        tx_type,
+        denomination,
+        tx_currency,
+        tx_options,
+        code: verificationCode,
       });
+      if (emailStatus.message === "Email sent") {
+        return main_helper.success_response(res, "Verification code has been sent");
+      } else {
+        return main_helper.error_response(res, emailStatus);
+      }
     } else {
       return main_helper.error_response(res, "Insufficient funds");
     }
@@ -473,31 +409,24 @@ async function make_transfer(req, res) {
 
 async function verify_external_transaction(req, res) {
   try {
-    address = req.address;
+    let address = req.address;
     const { code } = req.body;
 
-    if (!address) {
-      return main_helper.error_response(res, "you are not logged in");
-    }
-
-    if (!code) {
-      return main_helper.error_response(res, "Please provide verification code");
-    }
+    if (!address) return main_helper.error_response(res, "you are not logged in");
+    if (!code) return main_helper.error_response(res, "Please provide verification code");
 
     const verifiedTx = await verify_txs.findOne({
       from: address,
       code,
     });
 
-    if (!verifiedTx) {
-      return main_helper.error_response(res, "Invalid verification code");
-    }
+    if (!verifiedTx) return main_helper.error_response(res, "Invalid verification code");
 
     let { to, amount, tx_options, denomination, tx_type, tx_hash, tx_currency } =
       verifiedTx;
     let currency = tx_options?.currency;
 
-    let queries = [
+    const queries = [
       accounts.findOne({
         account_owner: to,
         account_category: tx_options?.account_category_to,
@@ -506,22 +435,17 @@ async function verify_external_transaction(req, res) {
         account_owner: address,
         account_category: tx_options?.account_category_from,
       }),
-      accounts.findOne({
-        account_owner: address,
-        account_category: "main",
-      }),
+      accounts.findOne({ account_owner: address, account_category: "main" }),
+      rates.findOne(),
     ];
 
-    let [account_to, account_from, mainAccount] = await Promise.all(queries);
+    let [account_to, account_from, mainAccount, ratesObj] = await Promise.all(queries);
 
-    if (!mainAccount?.active) {
-      return main_helper.error_response(res, "Cannot transfer from this account");
-    }
-
-    if (!account_to || !account_from) {
+    if (!mainAccount?.active || !account_to || !account_from) {
+      // Change 3
       return main_helper.error_response(
         res,
-        "we dont have such address registered in our system.",
+        "we don't have such an address registered in our system, or the account is inactive",
       );
     }
 
@@ -531,16 +455,16 @@ async function verify_external_transaction(req, res) {
     if (account_to.active === false) {
       return main_helper.error_response(res, "Cannot transfer to this account");
     }
+
     let operations = [];
+
+    const amountFloat = parseFloat(amount);
     if (currency) {
-      if (
-        (account_from.assets[currency],
-        account_from.assets[currency] >= parseFloat(amount))
-      ) {
+      if ((account_from.assets[currency], account_from.assets[currency] >= amountFloat)) {
         let decreaseBalance = {};
         let increaseBalance = {};
-        decreaseBalance[`assets.${currency}`] = 0 - parseFloat(amount);
-        increaseBalance[`assets.${currency}`] = parseFloat(amount);
+        decreaseBalance[`assets.${currency}`] = 0 - amountFloat;
+        increaseBalance[`assets.${currency}`] = amountFloat;
         operations.push(
           accounts.findOneAndUpdate(
             {
@@ -553,13 +477,14 @@ async function verify_external_transaction(req, res) {
           transactions.create({
             from: address,
             to,
-            amount,
+            amount: amountFloat,
             tx_hash,
             tx_status: "approved",
             tx_type,
             denomination,
             tx_currency,
             tx_options,
+            A1_price: ratesObj?.atr?.usd ?? 2,
           }),
           accounts.findOneAndUpdate(
             { account_owner: to, account_category: tx_options?.account_category_to },
@@ -570,27 +495,28 @@ async function verify_external_transaction(req, res) {
       } else {
         return main_helper.error_response(res, "Insufficient funds");
       }
-    } else if (account_from.balance >= parseFloat(amount)) {
+    } else if (account_from.balance >= amountFloat) {
       operations.push(
         accounts.findOneAndUpdate(
           { account_owner: address, account_category: tx_options?.account_category_from },
-          { $inc: { balance: 0 - parseFloat(amount) } },
+          { $inc: { balance: 0 - amountFloat } },
           { new: true },
         ),
         transactions.create({
           from: address,
           to,
-          amount,
+          amount: amountFloat,
           tx_hash,
           tx_status: "approved",
           tx_type,
           denomination,
           tx_currency,
           tx_options,
+          A1_price: ratesObj?.atr?.usd ?? 2,
         }),
         accounts.findOneAndUpdate(
           { account_owner: to, account_category: tx_options?.account_category_to },
-          { $inc: { balance: amount } },
+          { $inc: { balance: amountFloat } },
           { new: true },
         ),
       );
@@ -612,66 +538,6 @@ async function verify_external_transaction(req, res) {
   }
 }
 
-// Referral Uni Transaction
-async function send_uni_referral_transaction(
-  user_has_ref_uni,
-  referral_options,
-  tx_hash,
-  account_type_uni_from,
-  tx,
-) {
-  let user_uni_referral = await referral_links.aggregate([
-    {
-      $match: { referral: user_has_ref_uni.referral },
-    },
-    {
-      $lookup: {
-        from: "account_metas",
-        localField: "account_id",
-        foreignField: "_id",
-        as: "account_id",
-      },
-    },
-    { $unwind: "$account_id" },
-  ]);
-  let tx_amount =
-    (tx.amount * referral_options?.object_value?.referral_uni_percentage) / 100;
-  let to_address = user_uni_referral[0]?.account_id?.address;
-  let tx_hash_generated = global_helper.make_hash();
-  if (tx.to != to_address) {
-    let to_main = await accounts.findOne({
-      $or: [{ account_owner: to_address }, { address: to_address }],
-      account_category: "main",
-    });
-    let tx_save_uni = await transactions.create({
-      tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
-      to: to_main?.address,
-      amount: tx_amount,
-      from: tx.to,
-      tx_status: "approved",
-      tx_type: "referral_bonus_uni_level",
-      denomination: 0,
-      tx_fee: 0,
-      tx_fee_currency: tx.tx_fee_currency,
-      tx_currency: tx.tx_currency,
-      tx_options: {
-        referral: user_has_ref_uni.referral,
-        tx_hash: tx_hash,
-        referral_module: "uni",
-        lvl: 0,
-        percent: referral_options?.object_value?.referral_uni_percentage,
-      },
-    });
-    if (tx_save_uni) {
-      await accounts.findOneAndUpdate(
-        { account_owner: to_address, account_category: "main" },
-        { $inc: { balance: tx_amount } },
-      );
-    }
-  }
-  return false;
-}
-
 // Checking Max Bonus Amount For User Referral
 async function check_user_bonus_maximum(address, bonus_type) {
   let tx_amount = await transactions.aggregate([
@@ -683,78 +549,6 @@ async function check_user_bonus_maximum(address, bonus_type) {
   } else {
     return 0;
   }
-}
-
-// Referral Binary Transaction
-async function send_binary_referral_transaction(
-  user_has_ref_binary,
-  referral_options,
-  tx_hash,
-  account_type_uni_from,
-  tx,
-) {
-  let binary_bonus_txs = [];
-  for (let i = 0; i < user_has_ref_binary.length; i++) {
-    let user_binary_referral = await referral_links.aggregate([
-      {
-        $match: { referral: user_has_ref_binary[i].referral },
-      },
-      {
-        $lookup: {
-          from: "account_metas",
-          localField: "account_id",
-          foreignField: "_id",
-          as: "account_id",
-        },
-      },
-      { $unwind: "$account_id" },
-    ]);
-    let lbl = "referral_binary_percentage_lvl_" + user_has_ref_binary[i].lvl;
-    let lba = "referral_binary_max_amount_lvl_" + user_has_ref_binary[i].lvl;
-    let level_percent = referral_options?.object_value[lbl];
-    let tx_amount = (tx.amount * level_percent) / 100;
-    let to_address = user_binary_referral[0]?.account_id?.address;
-    let already_taken_bonus = await check_user_bonus_maximum(
-      to_address,
-      "referral_bonus_binary_level_" + (i + 1),
-    );
-    if (already_taken_bonus + tx_amount <= referral_options?.object_value[lba]) {
-      let tx_hash_generated = global_helper.make_hash();
-      if (tx.to != to_address) {
-        let to_main = await accounts.findOne({
-          $or: [{ account_owner: to_address }, { address: to_address }],
-          account_category: "main",
-        });
-        let tx_save_binary = await transactions.create({
-          tx_hash: ("0x" + tx_hash_generated).toLowerCase(),
-          to: to_main?.address,
-          amount: tx_amount,
-          from: tx.to,
-          tx_status: "approved",
-          tx_type: "referral_bonus_binary_level_" + (i + 1),
-          denomination: 0,
-          tx_fee: 0,
-          tx_fee_currency: tx.tx_fee_currency,
-          tx_currency: tx.tx_currency,
-          tx_options: {
-            referral: user_has_ref_binary[i].referral,
-            tx_hash: tx_hash,
-            referral_module: "binary",
-            lvl: i + 1,
-            percent: level_percent,
-          },
-        });
-        if (tx_save_binary) {
-          await accounts.findOneAndUpdate(
-            { account_owner: to_address, account_category: "main" },
-            { $inc: { balance: tx_amount } },
-          );
-          binary_bonus_txs.push(tx_save_binary);
-        }
-      }
-    }
-  }
-  return binary_bonus_txs;
 }
 
 // Get Transaction Type
@@ -774,17 +568,20 @@ async function get_tx_type(tx_type) {
 // Pending Deposit Transaction
 async function pending_deposit_transaction(req, res) {
   try {
-    let { amount, amountTransferedFrom, receivePaymentAddress, startDate } = req.body;
-
     let from = req.address;
     if (!from)
       return res.status(400).json(main_helper.error_message("you are not logged in"));
+    let { amount, amountTransferedFrom, receivePaymentAddress, startDate } = req.body;
 
     const tx_hash = global_helper.make_hash();
-    let account_main = await accounts.findOne({
-      $or: [{ account_owner: from }, { address: from }],
-      account_category: "main",
-    });
+
+    let [account_main, ratesObj] = await Promise.all([
+      accounts.findOne({
+        $or: [{ account_owner: from }, { address: from }],
+        account_category: "main",
+      }),
+      rates.findOne(),
+    ]);
 
     const transaction = await transactions.create({
       from,
@@ -800,6 +597,7 @@ async function pending_deposit_transaction(req, res) {
         amountTransferedFrom,
         startDate,
       },
+      A1_price: ratesObj?.atr?.usd ?? 2,
     });
 
     res.status(200).send({ success: true, transaction });
@@ -817,10 +615,14 @@ async function coinbase_deposit_transaction(req, res) {
       return res.status(400).json(main_helper.error_message("you are not logged in"));
     }
     const tx_hash = global_helper.make_hash();
-    let account_main = await accounts.findOne({
-      $or: [{ account_owner: from }, { address: from }],
-      account_category: "main",
-    });
+
+    let [account_main, ratesObj] = await Promise.all([
+      accounts.findOne({
+        $or: [{ account_owner: from }, { address: from }],
+        account_category: "main",
+      }),
+      rates.findOne(),
+    ]);
 
     await transactions.create({
       from,
@@ -833,6 +635,7 @@ async function coinbase_deposit_transaction(req, res) {
       tx_options: {
         method: "coinbase",
       },
+      A1_price: ratesObj?.atr?.usd ?? 2,
     });
 
     const chargeData = {
@@ -984,8 +787,6 @@ async function coinbase_webhooks(req, res) {
       );
     }
 
-    // console.log(event);
-
     if (event.type === "charge:failed") {
       try {
         const contract = new web3.eth.Contract(minABI, tokenAddress);
@@ -1051,29 +852,28 @@ async function make_withdrawal(req, res) {
   if (!address) {
     return res.status(400).json({ error: "you are not logged in" });
   }
+
+  amount = parseFloat(amount);
   try {
-    let [mainAccount, treasury] = await Promise.all([
+    let [mainAccount, treasury, ratesObj] = await Promise.all([
       accounts.findOne({
         account_owner: address,
         account_category: "main",
       }),
       treasuries.findOne(),
+      rates.findOne(),
     ]);
 
-    if (!mainAccount) {
+    if (!mainAccount)
       return res.status(400).json(main_helper.error_message("main account not found"));
-    }
-
-    if (!mainAccount.active) {
+    if (!mainAccount.active)
       return res
         .status(400)
         .json(main_helper.error_message("main account is not active"));
-    }
 
     if (accountType === "ATAR") {
       let tx_fee_value = await global_helper.calculate_tx_fee(null, "ATR");
 
-      // let tx_fee = tx_fee_value?.data;
       if (mainAccount.balance < amount) {
         return res.status(400).json(main_helper.error_message("insufficient funds"));
       }
@@ -1083,7 +883,7 @@ async function make_withdrawal(req, res) {
       const pendingWithdrawalAmount = treasury.pendingWithdrawals["ATR"] || 0;
       const currentIncomingAmount = treasury.incoming["ATR"] || 0;
 
-      if (pendingWithdrawalAmount + Number(amount) > currentIncomingAmount) {
+      if (pendingWithdrawalAmount + amount > currentIncomingAmount) {
         return res
           .status(400)
           .json(
@@ -1112,6 +912,7 @@ async function make_withdrawal(req, res) {
           tx_status: "approved",
           tx_fee: tx_fee_value,
           tx_fee_currency: "ATR",
+          A1_price: ratesObj?.atr?.usd ?? 2,
           tx_options: {
             method: "manual",
             currency: "ATR",
@@ -1169,8 +970,7 @@ async function make_withdrawal(req, res) {
     const pendingWithdrawalAmount = treasury.pendingWithdrawals[currency] || 0;
     const currentIncomingAmount = treasury.incoming[currency] || 0;
 
-    console.log(pendingWithdrawalAmount, amount, currentIncomingAmount);
-    if (pendingWithdrawalAmount + Number(amount) > currentIncomingAmount) {
+    if (pendingWithdrawalAmount + amount > currentIncomingAmount) {
       return res
         .status(400)
         .json(
@@ -1198,6 +998,7 @@ async function make_withdrawal(req, res) {
         tx_type: "withdraw",
         tx_currency: "ether",
         tx_status: "pending",
+        A1_price: ratesObj?.atr?.usd ?? 2,
         tx_options: {
           method: "manual",
           currency: accountType,
@@ -1208,7 +1009,7 @@ async function make_withdrawal(req, res) {
         {},
         {
           $inc: {
-            [`pendingWithdrawals.${currency}`]: Number(amount),
+            [`pendingWithdrawals.${currency}`]: amount,
           },
         },
       ),
@@ -1237,7 +1038,11 @@ async function direct_deposit(req, res) {
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
-    const tx = await web3.eth.getTransaction(hash);
+    const [tx, ratesObj] = await Promise.all([
+      web3.eth.getTransaction(hash),
+      rates.findOne(),
+    ]);
+
     const inputHex = tx.input;
     const functionSignature = inputHex.slice(0, 10);
     const encodedParameters = inputHex.slice(10);
@@ -1268,6 +1073,7 @@ async function direct_deposit(req, res) {
           tx_options: {
             method: "direct",
           },
+          A1_price: ratesObj?.atr?.usd ?? 2,
         }),
       ]);
 
@@ -1327,10 +1133,13 @@ async function unstake_transaction(req, res) {
       return res.status(400).json(main_helper.error_message("not unstaked yet"));
     }
 
-    const mainAccount = await accounts.findOne({
-      account_owner: address,
-      account_category: "main",
-    });
+    const [mainAccount, ratesObj] = await Promise.all([
+      accounts.findOne({
+        account_owner: address,
+        account_category: "main",
+      }),
+      rates.findOne(),
+    ]);
 
     if (!mainAccount) {
       return res.status(400).json(main_helper.error_message("main account not found"));
@@ -1356,6 +1165,7 @@ async function unstake_transaction(req, res) {
         tx_options: {
           method: "unstake",
         },
+        A1_price: ratesObj?.atr?.usd ?? 2,
       }),
     ]);
 
@@ -1375,10 +1185,13 @@ async function exchange(req, res) {
     if (!address)
       return res.status(400).send({ success: false, message: "you are not logged in" });
 
-    const mainAccount = await accounts.findOne({
-      account_owner: address,
-      account_category: "main",
-    });
+    const [mainAccount, ratesObj] = await Promise.all([
+      accounts.findOne({
+        account_owner: address,
+        account_category: "main",
+      }),
+      rates.findOne(),
+    ]);
 
     if (!mainAccount) {
       return res.status(400).send({ success: false, message: "main account not found" });
@@ -1450,6 +1263,7 @@ async function exchange(req, res) {
           fromAmount,
           toAmount,
         },
+        A1_price: ratesObj?.atr?.usd ?? 2,
       }),
     ]);
 
@@ -1463,7 +1277,7 @@ async function exchange(req, res) {
 async function stakeCurrency(req, res) {
   try {
     let addr = req.address;
-    const { amount, currency, percentage = 0, duration } = req.body;
+    let { amount, currency, percentage = 0, duration } = req.body;
 
     if (!addr) {
       return main_helper.error_response(res, "You are not logged in");
@@ -1474,17 +1288,21 @@ async function stakeCurrency(req, res) {
     }
 
     const address = addr.toLowerCase();
+    amount = Number(amount);
 
-    const mainAccount = await accounts.findOne({
-      account_owner: address,
-      account_category: "main",
-    });
+    const [mainAccount, ratesObj] = await Promise.all([
+      accounts.findOne({
+        account_owner: address,
+        account_category: "main",
+      }),
+      rates.findOne(),
+    ]);
 
     if (!mainAccount) {
       return main_helper.error_response(res, "account not found");
     }
 
-    if (mainAccount.assets[currency] < Number(amount)) {
+    if (mainAccount.assets[currency] < amount) {
       return main_helper.error_response(res, "insufficient balance");
     }
 
@@ -1503,8 +1321,8 @@ async function stakeCurrency(req, res) {
       { account_owner: address, account_category: "main" },
       {
         $inc: {
-          [`assets.${currency}Staked`]: Number(amount),
-          [`assets.${currency}`]: -Number(amount),
+          [`assets.${currency}Staked`]: amount,
+          [`assets.${currency}`]: -amount,
         },
       },
       { new: true },
@@ -1512,7 +1330,7 @@ async function stakeCurrency(req, res) {
 
     const createStakePromise = currencyStakes.create({
       address,
-      amount: Number(amount),
+      amount: amount,
       currency,
       percentage,
       expires,
@@ -1522,7 +1340,7 @@ async function stakeCurrency(req, res) {
     const createTransactionPromice = transactions.create({
       from: address,
       to: address,
-      amount: Number(amount),
+      amount: amount,
       tx_hash,
       tx_status: "approved",
       tx_type: "stake",
@@ -1531,11 +1349,12 @@ async function stakeCurrency(req, res) {
       tx_fee_currency: "atar",
       tx_currency: "currency",
       tx_options: {
-        amount: Number(amount),
+        amount: amount,
         currency,
         percentage,
         expires,
       },
+      A1_price: ratesObj?.atr?.usd ?? 2,
     });
 
     const [updatedAccount, createdStake, createTransaction] = await Promise.all([
