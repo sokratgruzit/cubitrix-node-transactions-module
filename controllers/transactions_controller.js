@@ -375,29 +375,60 @@ async function make_transfer(req, res) {
         account_category_to,
         account_category_from,
       };
-      const verificationCode = global_helper.make_hash(6);
-      const emailStatus = await global_helper.send_verification_mail(
-        metaAccount?.email,
-        verificationCode,
-      );
+      if (to !== from) {
+        const verificationCode = global_helper.make_hash(6);
+        const emailStatus = await global_helper.send_verification_mail(
+          metaAccount?.email,
+          verificationCode,
+        );
 
-      await verify_txs.create({
-        from,
-        to,
-        amount,
-        tx_hash,
-        tx_status: "approved",
-        tx_type,
-        denomination,
-        tx_currency,
-        tx_options,
-        code: verificationCode,
-      });
-      if (emailStatus.message === "Email sent") {
-        return main_helper.success_response(res, "Verification code has been sent");
-      } else {
-        return main_helper.error_response(res, emailStatus);
+        await verify_txs.create({
+          from,
+          to,
+          amount,
+          tx_hash,
+          tx_status: "approved",
+          tx_type,
+          denomination,
+          tx_currency,
+          tx_options,
+          code: verificationCode,
+        });
+        if (emailStatus.message === "Email sent") {
+          return main_helper.success_response(res, "Verification code has been sent");
+        } else {
+          return main_helper.error_response(res, emailStatus);
+        }
       }
+
+      const [updatedAcc, createdTransaction] = await Promise.all([
+        accounts.findOneAndUpdate(
+          { account_owner: from, account_category: account_category_from },
+          { $inc: { balance: 0 - parseFloat(amount) } },
+          { new: true },
+        ),
+        transactions.create({
+          from,
+          to,
+          amount,
+          tx_hash,
+          tx_status: "approved",
+          tx_type,
+          denomination,
+          tx_currency,
+          tx_options,
+        }),
+        accounts.findOneAndUpdate(
+          { account_owner: to, account_category: account_category_to },
+          { $inc: { balance: amount } },
+          { new: true },
+        ),
+      ]);
+
+      return main_helper.success_response(res, {
+        message: "successfull transaction",
+        data: { createdTransaction, updatedAcc },
+      });
     } else {
       return main_helper.error_response(res, "Insufficient funds");
     }
