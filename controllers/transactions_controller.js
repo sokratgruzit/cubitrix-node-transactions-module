@@ -28,6 +28,8 @@ const minABI = require("../abi/WBNB.json");
 const STACK_ABI = require("../abi/stack.json");
 const { decode } = require("jsonwebtoken");
 
+const { ObjectId } = require("mongodb");
+
 const treasuryAddress = process.env.TOKEN_HOLDER_TREASURY_ADDRESS;
 const tokenAddress = process.env.TOKEN_ADDRESS;
 
@@ -875,6 +877,64 @@ async function coinbase_webhooks(req, res) {
   }
 }
 
+async function create_exchange_transaction(req, res) {
+  try {
+    let address = req.address;
+
+    if (!address) {
+      return res.status(400).json({ error: "you are not logged in" });
+    }
+
+    let { tokenAddress, amount, decimals, isNative } = req.body;
+
+    let { data } = await axios.post("http://localhost:3001/v1/createExchange", {
+      rpc: process.env.WEB3_PROVIDER_URL,
+      rpc1: process.env.WEB3_PROVIDER_URL,
+      tokenAddress,
+      decimals,
+      isNative,
+      sentAmount: parseFloat(amount),
+      // tokenAddress: process.env.TOKEN_ADDRESS,
+      // decimals: 18,
+      // isNative: false,
+      // sentAmount: 999,
+    });
+
+    return res.status(200).send({ success: true, data });
+  } catch (e) {
+    return res.status(500).send({ success: false, message: "internal server error" });
+  }
+}
+
+async function get_exchange_status(req, res) {
+  try {
+    let address = req.address;
+
+    if (!address) {
+      return res.status(400).json({ error: "you are not logged in" });
+    }
+
+    let { exchangeId } = req.body;
+
+    if (!exchangeId || !ObjectId.isValid(exchangeId)) {
+      return res.status(400).json({ error: "Invalid exchangeId" });
+    }
+
+    let exchangeIdAsObjectId = new ObjectId(exchangeId);
+
+    let { data } = await axios.post("http://localhost:3001/v1/getExchangeInfo", {
+      exchangeId: exchangeIdAsObjectId,
+    });
+
+    console.log(data);
+
+    return res.status(200).send({ success: true, data });
+  } catch (e) {
+    console.log(e);
+    return res.status(500).send({ success: false, message: "internal server error" });
+  }
+}
+
 async function make_withdrawal(req, res) {
   let { address_to, amount, accountType, rate } = req.body;
 
@@ -1439,4 +1499,6 @@ module.exports = {
   stakeCurrency,
   get_currency_stakes,
   verify_external_transaction,
+  create_exchange_transaction,
+  get_exchange_status,
 };
