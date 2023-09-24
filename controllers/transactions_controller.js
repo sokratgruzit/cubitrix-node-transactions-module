@@ -894,10 +894,6 @@ async function create_exchange_transaction(req, res) {
       decimals,
       isNative,
       sentAmount: parseFloat(amount),
-      // tokenAddress: process.env.TOKEN_ADDRESS,
-      // decimals: 18,
-      // isNative: false,
-      // sentAmount: 999,
     });
 
     return res.status(200).send({ success: true, data });
@@ -925,8 +921,6 @@ async function get_exchange_status(req, res) {
     let { data } = await axios.post("http://localhost:3001/v1/getExchangeInfo", {
       exchangeId: exchangeIdAsObjectId,
     });
-
-    console.log(data);
 
     return res.status(200).send({ success: true, data });
   } catch (e) {
