@@ -894,7 +894,7 @@ async function create_exchange_transaction(req, res) {
       return res.status(400).json({ error: "you are not logged in" });
     }
 
-    let { rpc1, rpc2, tokenAddress, amount, decimals, isNative } = req.body;
+    let { rpc1, rpc2, tokenAddress, amount, decimals, isNative, tokenCount } = req.body;
     amount = parseFloat(amount);
 
     let { data } = await axios.post(process.env.PAYMENT_API + "/v1/createExchange", {
@@ -924,18 +924,21 @@ async function create_exchange_transaction(req, res) {
       to: account_main?.address,
       amount,
       tx_hash,
-      tx_status: "approved",
+      tx_status: "pending",
       tx_type: "payment",
       denomination,
       tx_currency: "ether",
       exchange_id: data?.data?.exchangeId,
       exchange_create_object: data?.data,
       A1_price: ratesObj?.atr?.usd ?? 2,
+      tx_options: {
+        tokenCount,
+      },
     });
 
     return res.status(200).send({ success: true, data, createdTransaction });
   } catch (e) {
-    console.log();
+    console.log(e);
     return res.status(500).send({ success: false, message: "internal server error" });
   }
 }
@@ -999,21 +1002,87 @@ async function change_balance_and_tx_status(exchangeIdAsObjectId, get_tx, ratesO
   return false;
 }
 
+setInterval(() => {
+  check_transactions_for_pending();
+}, 5000);
+
 async function check_transactions_for_pending() {
-  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-  const [get_txs, ratesObj] = await Promise.all([
+  console.log("runs");
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const [get_txs, ratesObj, updated_txs] = await Promise.all([
     transactions.find({
       exchange_id: { $ne: null },
       tx_status: "pending",
-      created_at: { $gte: tenMinutesAgo },
+      created_at: { $gte: hourAgo },
     }),
     rates.findOne(),
+    transactions.updateMany(
+      {
+        exchange_id: { $ne: null },
+        tx_status: "pending",
+        created_at: { $lt: hourAgo },
+      },
+      { $set: { tx_status: "canceled" } },
+    ),
   ]);
 
-  for (let i = 0; i < get_txs.length; i++) {
-    await change_balance_and_tx_status(get_txs[i].exchange_id, get_txs[i], ratesObj);
-  }
-  return true;
+  get_txs.map(async (tx) => {
+    const exchangeId = tx.exchange_id;
+    let { data } = await axios.post(process.env.PAYMENT_API + "/v1/getExchangeInfo", {
+      exchangeId: exchangeId,
+    });
+
+    if (data.exchange?.status === "success") {
+      await transactions.updateOne(
+        { exchange_id: exchangeId },
+        { $set: { tx_status: "confirmed" } },
+      );
+      const contract = new web3.eth.Contract(minABI, tokenAddress);
+      const tokenAmountInWei = web3.utils.toWei(
+        tx?.tx_options?.tokenCount?.toString(),
+        "ether",
+      );
+      const transfer = contract.methods.transfer(tx?.from, tokenAmountInWei);
+
+      const encodedABI = transfer.encodeABI();
+
+      const gasPrice = await web3.eth.getGasPrice();
+
+      const tx = {
+        from: treasuryAddress,
+        to: tokenAddress,
+        data: encodedABI,
+      };
+
+      const gasLimit = await web3.eth.estimateGas(tx);
+
+      tx.gas = gasLimit;
+
+      web3.eth.accounts.signTransaction(
+        tx,
+        process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
+        (err, signed) => {
+          if (err) {
+            console.log(err);
+          } else {
+            web3.eth
+              .sendSignedTransaction(signed.rawTransaction)
+              .on("receipt", async (receipt) => {
+                const transactionFee = web3.utils.fromWei(
+                  web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(gasPrice)),
+                  "ether",
+                );
+                await transactions.findOneAndUpdate(
+                  { tx_hash: metadata.tx_hash },
+                  { tx_status: "canceled", tx_fee: transactionFee },
+                );
+              })
+              .on("error", console.log);
+          }
+        },
+      );
+    }
+  });
 }
 
 async function make_withdrawal(req, res) {
