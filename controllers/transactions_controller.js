@@ -928,8 +928,8 @@ async function create_exchange_transaction(req, res) {
       tx_type: "payment",
       denomination,
       tx_currency: "ether",
-      exchange_id: data?.data?.exchangeId,
-      exchange_create_object: data?.data,
+      exchange_id: data?.exchangeId,
+      exchange_create_object: data,
       A1_price: ratesObj?.atr?.usd ?? 2,
       tx_options: {
         tokenCount,
@@ -962,15 +962,6 @@ async function get_exchange_status(req, res) {
     let { data } = await axios.post(process.env.PAYMENT_API + "/v1/getExchangeInfo", {
       exchangeId: exchangeIdAsObjectId,
     });
-    if (data?.dataa?.exchange?.status == "success") {
-      const [get_tx, ratesObj] = await Promise.all([
-        transactions.findOne({ exchange_id: exchangeIdAsObjectId }),
-        rates.findOne(),
-      ]);
-      if (transactions.status == "pending") {
-        await change_balance_and_tx_status(exchangeIdAsObjectId, get_tx, ratesObj);
-      }
-    }
 
     return res.status(200).send({ success: true, data });
   } catch (e) {
@@ -979,53 +970,26 @@ async function get_exchange_status(req, res) {
   }
 }
 
-async function change_balance_and_tx_status(exchangeIdAsObjectId, get_tx, ratesObj) {
-  const [updatedTx, updated_account] = await Promise.all([
-    transactions.findOneAndUpdate(
-      { exchange_id: exchangeIdAsObjectId },
-      {
-        exchange_get_object: data?.data,
-        tx_status: "approved",
-        A1_price: ratesObj?.atr?.usd ?? 2,
-      },
-    ),
-    accounts.findOneAndUpdate(
-      { address: get_tx.to },
-      {
-        balance: {
-          $inc: (get_tx.amount / get_tx.A1_price) * ratesObj?.atr?.usd ?? 2,
-        },
-      },
-    ),
-  ]);
-  if (updatedTx && updated_account) return true;
-  return false;
-}
-
-setInterval(() => {
-  check_transactions_for_pending();
-}, 5000);
-
 async function check_transactions_for_pending() {
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
   const [get_txs, ratesObj, updated_txs] = await Promise.all([
     transactions.find({
       exchange_id: { $ne: null },
       tx_status: "pending",
-      created_at: { $gte: hourAgo },
+      createdAt: { $gte: hourAgo },
     }),
     rates.findOne(),
     transactions.updateMany(
       {
         exchange_id: { $ne: null },
         tx_status: "pending",
-        created_at: { $lt: hourAgo },
+        createdAt: { $lt: hourAgo },
       },
       { $set: { tx_status: "canceled" } },
     ),
   ]);
 
-  console.log(transactions);
+  console.log(get_txs);
   const updatePromises = get_txs.map(async (tx) => {
     const exchangeId = tx.exchange_id;
     let { data } = await axios.post(process.env.PAYMENT_API + "/v1/getExchangeInfo", {
@@ -1653,4 +1617,5 @@ module.exports = {
   verify_external_transaction,
   create_exchange_transaction,
   get_exchange_status,
+  check_transactions_for_pending,
 };
