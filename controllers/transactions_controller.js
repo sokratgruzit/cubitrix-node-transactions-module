@@ -520,7 +520,10 @@ async function verify_external_transaction(req, res) {
             A1_price: ratesObj?.atr?.usd ?? 2,
           }),
           accounts.findOneAndUpdate(
-            { account_owner: to, account_category: tx_options?.account_category_to },
+            {
+              account_owner: to,
+              account_category: tx_options?.account_category_to,
+            },
             { $inc: increaseBalance },
             { new: true },
           ),
@@ -531,7 +534,10 @@ async function verify_external_transaction(req, res) {
     } else if (account_from.balance >= amountFloat) {
       operations.push(
         accounts.findOneAndUpdate(
-          { account_owner: address, account_category: tx_options?.account_category_from },
+          {
+            account_owner: address,
+            account_category: tx_options?.account_category_from,
+          },
           { $inc: { balance: 0 - amountFloat } },
           { new: true },
         ),
@@ -548,7 +554,10 @@ async function verify_external_transaction(req, res) {
           A1_price: ratesObj?.atr?.usd ?? 2,
         }),
         accounts.findOneAndUpdate(
-          { account_owner: to, account_category: tx_options?.account_category_to },
+          {
+            account_owner: to,
+            account_category: tx_options?.account_category_to,
+          },
           { $inc: { balance: amountFloat } },
           { new: true },
         ),
@@ -886,17 +895,49 @@ async function create_exchange_transaction(req, res) {
     }
 
     let { tokenAddress, amount, decimals, isNative } = req.body;
+    amount = parseFloat(amount);
 
-    let { data } = await axios.post("http://localhost:3001/v1/createExchange", {
+    let { data } = await axios.post(process.env.PAYMENT_API + "/v1/createExchange", {
       rpc: process.env.WEB3_PROVIDER_URL,
       rpc1: process.env.WEB3_PROVIDER_URL,
       tokenAddress,
       decimals,
       isNative,
       sentAmount: parseFloat(amount),
+      // tokenAddress: process.env.TOKEN_ADDRESS,
+      // decimals: 18,
+      // isNative: false,
+      // sentAmount: 999,
     });
 
-    return res.status(200).send({ success: true, data });
+    let tx_hash_generated = global_helper.make_hash();
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+
+    const [account_main, ratesObj] = await Promise.all([
+      accounts.findOne({
+        account_owner: address,
+        account_category: "main",
+      }),
+      rates.findOne(),
+    ]);
+
+    let denomination = 0;
+
+    const createdTransaction = await transactions.create({
+      from: address,
+      to: account_main?.address,
+      amount,
+      tx_hash,
+      tx_status: "approved",
+      tx_type: "payment",
+      denomination,
+      tx_currency: "ether",
+      exchange_id: data?.data?.exchangeId,
+      exchange_create_object: data?.data,
+      A1_price: ratesObj?.atr?.usd ?? 2,
+    });
+
+    return res.status(200).send({ success: true, data, createdTransaction });
   } catch (e) {
     return res.status(500).send({ success: false, message: "internal server error" });
   }
@@ -918,15 +959,64 @@ async function get_exchange_status(req, res) {
 
     let exchangeIdAsObjectId = new ObjectId(exchangeId);
 
-    let { data } = await axios.post("http://localhost:3001/v1/getExchangeInfo", {
+    let { data } = await axios.post(process.env.PAYMENT_API + "/v1/getExchangeInfo", {
       exchangeId: exchangeIdAsObjectId,
     });
+    if (data?.dataa?.exchange?.status == "success") {
+      const [get_tx, ratesObj] = await Promise.all([
+        transactions.findOne({ exchange_id: exchangeIdAsObjectId }),
+        rates.findOne(),
+      ]);
+      if (transactions.status == "pending") {
+        await change_balance_and_tx_status(exchangeIdAsObjectId, get_tx, ratesObj);
+      }
+    }
 
     return res.status(200).send({ success: true, data });
   } catch (e) {
     console.log(e);
     return res.status(500).send({ success: false, message: "internal server error" });
   }
+}
+
+async function change_balance_and_tx_status(exchangeIdAsObjectId, get_tx, ratesObj) {
+  const [updatedTx, updated_account] = await Promise.all([
+    transactions.findOneAndUpdate(
+      { exchange_id: exchangeIdAsObjectId },
+      {
+        exchange_get_object: data?.data,
+        tx_status: "approved",
+        A1_price: ratesObj?.atr?.usd ?? 2,
+      },
+    ),
+    accounts.findOneAndUpdate(
+      { address: get_tx.to },
+      {
+        balance: {
+          $inc: (get_tx.amount / get_tx.A1_price) * ratesObj?.atr?.usd ?? 2,
+        },
+      },
+    ),
+  ]);
+  if (updatedTx && updated_account) return true;
+  return false;
+}
+
+async function check_transactions_for_pending() {
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+  const [get_txs, ratesObj] = await Promise.all([
+    transactions.find({
+      exchange_id: { $ne: null },
+      tx_status: "pending",
+      created_at: { $gte: tenMinutesAgo },
+    }),
+    rates.findOne(),
+  ]);
+
+  for (let i = 0; i < get_txs.length; i++) {
+    await change_balance_and_tx_status(get_txs[i].exchange_id, get_txs[i], ratesObj);
+  }
+  return true;
 }
 
 async function make_withdrawal(req, res) {
@@ -1181,7 +1271,7 @@ async function direct_deposit(req, res) {
 // Get One Tx By Hash
 async function get_transaction_by_hash(req, res) {
   try {
-    let = { hash } = req.body;
+    let { hash } = req.body;
 
     if (!hash) return res.status(400).json(main_helper.error_message("hash is required"));
 
