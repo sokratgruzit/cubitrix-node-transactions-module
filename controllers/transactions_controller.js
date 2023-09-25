@@ -894,20 +894,16 @@ async function create_exchange_transaction(req, res) {
       return res.status(400).json({ error: "you are not logged in" });
     }
 
-    let { tokenAddress, amount, decimals, isNative } = req.body;
+    let { rpc1, rpc2, tokenAddress, amount, decimals, isNative } = req.body;
     amount = parseFloat(amount);
 
     let { data } = await axios.post(process.env.PAYMENT_API + "/v1/createExchange", {
-      rpc: process.env.WEB3_PROVIDER_URL,
-      rpc1: process.env.WEB3_PROVIDER_URL,
+      rpc: rpc1,
+      rpc1: rpc2,
       tokenAddress,
       decimals,
       isNative,
       sentAmount: parseFloat(amount),
-      // tokenAddress: process.env.TOKEN_ADDRESS,
-      // decimals: 18,
-      // isNative: false,
-      // sentAmount: 999,
     });
 
     let tx_hash_generated = global_helper.make_hash();
@@ -939,6 +935,7 @@ async function create_exchange_transaction(req, res) {
 
     return res.status(200).send({ success: true, data, createdTransaction });
   } catch (e) {
+    console.log();
     return res.status(500).send({ success: false, message: "internal server error" });
   }
 }
