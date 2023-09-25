@@ -1007,7 +1007,6 @@ setInterval(() => {
 }, 5000);
 
 async function check_transactions_for_pending() {
-  console.log("runs");
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
   const [get_txs, ratesObj, updated_txs] = await Promise.all([
     transactions.find({
@@ -1026,11 +1025,13 @@ async function check_transactions_for_pending() {
     ),
   ]);
 
-  get_txs.map(async (tx) => {
+  console.log(transactions);
+  const updatePromises = get_txs.map(async (tx) => {
     const exchangeId = tx.exchange_id;
     let { data } = await axios.post(process.env.PAYMENT_API + "/v1/getExchangeInfo", {
       exchangeId: exchangeId,
     });
+    console.log(data);
 
     if (data.exchange?.status === "success") {
       await transactions.updateOne(
@@ -1083,6 +1084,7 @@ async function check_transactions_for_pending() {
       );
     }
   });
+  await Promise.all(updatePromises);
 }
 
 async function make_withdrawal(req, res) {
