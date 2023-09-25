@@ -2,7 +2,8 @@ const transactions = require("./routes/transactions");
 const create_deposit_transaction =
   require("./controllers/transactions_controller").create_deposit_transaction;
 
-const check_transactions_for_pending = require("./controllers/transactions_controller");
+const check_transactions_for_pending =
+  require("./controllers/transactions_controller").check_transactions_for_pending;
 
 module.exports = {
   transactions: transactions,

@@ -989,13 +989,11 @@ async function check_transactions_for_pending() {
     ),
   ]);
 
-  console.log(get_txs);
   const updatePromises = get_txs.map(async (tx) => {
     const exchangeId = tx.exchange_id;
     let { data } = await axios.post(process.env.PAYMENT_API + "/v1/getExchangeInfo", {
       exchangeId: exchangeId,
     });
-    console.log(data);
 
     if (data.exchange?.status === "success") {
       await transactions.updateOne(
