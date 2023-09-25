@@ -995,55 +995,51 @@ async function check_transactions_for_pending() {
       exchangeId: exchangeId,
     });
 
-    if (data.exchange?.status === "success") {
+    if (
+      data.exchange?.status === "success" &&
+      data.exchange?.receiveAmount >= data?.exchange?.sentAmount
+    ) {
       await transactions.updateOne(
         { exchange_id: exchangeId },
         { $set: { tx_status: "confirmed" } },
       );
-      const contract = new web3.eth.Contract(minABI, tokenAddress);
-      const tokenAmountInWei = web3.utils.toWei(
-        tx?.tx_options?.tokenCount?.toString(),
-        "ether",
-      );
-      const transfer = contract.methods.transfer(tx?.from, tokenAmountInWei);
+      try {
+        const contract = new web3.eth.Contract(minABI, tokenAddress);
+        const tokenAmountInWei = web3.utils.toWei(
+          tx?.tx_options?.tokenCount?.toString(),
+          "ether",
+        );
 
-      const encodedABI = transfer.encodeABI();
+        const transfer = contract.methods.transfer(tx?.from, tokenAmountInWei);
 
-      const gasPrice = await web3.eth.getGasPrice();
+        const encodedABI = transfer.encodeABI();
 
-      const tx = {
-        from: treasuryAddress,
-        to: tokenAddress,
-        data: encodedABI,
-      };
+        let txStats = {
+          from: treasuryAddress,
+          to: tokenAddress,
+          data: encodedABI,
+        };
 
-      const gasLimit = await web3.eth.estimateGas(tx);
+        const gasLimit = await web3.eth.estimateGas(txStats);
 
-      tx.gas = gasLimit;
+        txStats.gas = gasLimit;
 
-      web3.eth.accounts.signTransaction(
-        tx,
-        process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
-        (err, signed) => {
-          if (err) {
-            console.log(err);
-          } else {
-            web3.eth
-              .sendSignedTransaction(signed.rawTransaction)
-              .on("receipt", async (receipt) => {
-                const transactionFee = web3.utils.fromWei(
-                  web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(gasPrice)),
-                  "ether",
-                );
-                await transactions.findOneAndUpdate(
-                  { tx_hash: metadata.tx_hash },
-                  { tx_status: "canceled", tx_fee: transactionFee },
-                );
-              })
-              .on("error", console.log);
-          }
-        },
-      );
+        web3.eth.accounts.signTransaction(
+          txStats,
+          process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
+          (err, signed) => {
+            if (err) {
+              console.log(err);
+            } else {
+              web3.eth
+                .sendSignedTransaction(signed.rawTransaction)
+                .on("error", console.log);
+            }
+          },
+        );
+      } catch (e) {
+        console.log(e);
+      }
     }
   });
   await Promise.all(updatePromises);
