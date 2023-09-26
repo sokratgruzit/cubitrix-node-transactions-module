@@ -204,10 +204,10 @@ async function get_transactions_of_user(req, res) {
 }
 
 // Create Manual Deposit Transaction
-async function create_deposit_transaction(from, amount, tx_currency, tx_type) {
+async function create_deposit_transaction(from1, amount1, tx_currency, tx_type) {
   try {
-    let from = from.toLowerCase();
-    let amount = parseFloat(amount);
+    let from = from1.toLowerCase();
+    let amount = parseFloat(amount1);
 
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
