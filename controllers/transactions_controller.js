@@ -996,8 +996,8 @@ async function check_transactions_for_pending() {
     });
 
     if (
-      data.exchange?.status === "success" &&
-      data.exchange?.receiveAmount >= data?.exchange?.sentAmount
+      data.exchange?.status === "success"
+      // data.exchange?.receiveAmount >= data?.exchange?.sentAmount
     ) {
       await transactions.updateOne(
         { exchange_id: exchangeId },
