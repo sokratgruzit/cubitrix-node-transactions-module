@@ -1005,7 +1005,7 @@ async function check_transactions_for_pending() {
       let receivedisNative = data?.exchange?.isNative;
       await transactions.updateOne(
         { exchange_id: exchangeId },
-        { $set: { tx_status: "confirmed" } },
+        { $set: { tx_status: "approved" } },
       );
       try {
         const contract = new web3.eth.Contract(minABI, tokenAddress);
