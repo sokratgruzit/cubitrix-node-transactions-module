@@ -1014,7 +1014,7 @@ async function check_transactions_for_pending() {
         //   tx?.tx_options?.tokenCount?.toString(),
         //   "ether",
         // );
-        // let binance_rpcs = ["https://data-seed-prebsc-1-s1.binance.org:8545"];
+        let binance_rpcs_testnet = ["https://data-seed-prebsc-1-s1.binance.org:8545"];
         let binance_rpcs = [
           "https://bsc-dataseed.binance.org",
           "https://binance.nodereal.io",
@@ -1025,6 +1025,8 @@ async function check_transactions_for_pending() {
           chain = "eth";
         } else if (binance_rpcs.includes(receivedrpc)) {
           chain = "bsc";
+        } else {
+          chain = "bsc-test";
         }
         if (!chain) {
           return;
@@ -1034,8 +1036,10 @@ async function check_transactions_for_pending() {
         if (receivedisNative) {
           if (chain == "bsc") {
             receivedTotal = ratesObj.bnb.usd * receiveAmount;
-          } else {
+          } else if (chain == "eth") {
             receivedTotal = ratesObj.eth.usd * receiveAmount;
+          } else {
+            receivedTotal = ratesObj.bnb.usd * receiveAmount;
           }
         } else {
           if (chain == "eth") {
@@ -1584,7 +1588,7 @@ async function stakeCurrency(req, res) {
       amount: amount,
       tx_hash,
       tx_status: "approved",
-      tx_type: "stake",
+      tx_type: "currency stake",
       denomination: 0,
       tx_fee: 0,
       tx_fee_currency: "atar",
