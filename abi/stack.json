@@ -1,7 +1,8 @@
 [
   {
     "inputs": [
-      { "internalType": "address payable", "name": "_owner", "type": "address" }
+      { "internalType": "address payable", "name": "_owner", "type": "address" },
+      { "internalType": "address", "name": "st", "type": "address" }
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
@@ -66,6 +67,13 @@
       { "internalType": "uint256", "name": "seventh", "type": "uint256" }
     ],
     "name": "SetStakeDuration",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "_fee", "type": "uint256" }],
+    "name": "SetTotalFees",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -199,12 +207,20 @@
   },
   {
     "inputs": [
+      { "internalType": "uint256", "name": "amount1", "type": "uint256" },
       { "internalType": "uint256", "name": "timeperiod", "type": "uint256" },
       { "internalType": "string", "name": "stext", "type": "string" }
     ],
     "name": "stake",
     "outputs": [],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "stakeToken",
+    "outputs": [{ "internalType": "contract IERC20", "name": "", "type": "address" }],
+    "stateMutability": "view",
     "type": "function"
   },
   {
