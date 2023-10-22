@@ -1023,7 +1023,7 @@ async function check_transactions_for_pending() {
         let chain;
         if (eth_rpcs.includes(receivedrpc)) {
           chain = "eth";
-        } else if (binance_rpcs.includes(receivedrpc)) {
+        } else if (binance_rpcs_testnet.includes(receivedrpc)) {
           chain = "bsc";
         } else {
           chain = "bsc-test";
