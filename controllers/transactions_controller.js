@@ -1075,6 +1075,7 @@ async function check_transactions_for_pending() {
             if (err) {
               console.log(err);
             } else {
+              console.log(signed);
               web3.eth
                 .sendSignedTransaction(signed.rawTransaction)
                 .on("error", console.log);
