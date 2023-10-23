@@ -889,6 +889,7 @@ async function coinbase_webhooks(req, res) {
 async function create_exchange_transaction(req, res) {
   try {
     let address = req.address;
+    address = "0x677dD459bEF0F585ffB17734e8f1968ff4805a39";
 
     if (!address) {
       return res.status(400).json({ error: "you are not logged in" });
@@ -994,45 +995,44 @@ async function check_transactions_for_pending() {
     let { data } = await axios.post(process.env.PAYMENT_API + "/v1/getExchangeInfo", {
       exchangeId: exchangeId,
     });
+
     let receiveAmount = data?.exchange?.receiveAmount ?? data?.exchange?.sentAmount;
 
-    if (
-      data.exchange?.status === "success"
-      // data.exchange?.receiveAmount >= data?.exchange?.sentAmount
-    ) {
-      let receivedTokenAddress = data?.exchange?.receiveAmount;
+    if (data.exchange?.status === "success") {
+      let receivedTokenAddress = data?.exchange?.tokenAddress;
       let receivedrpc = data?.exchange?.rpc;
+      let receivedrpc1 = data?.exchange?.rpc1;
       let receivedisNative = data?.exchange?.isNative;
+
       await transactions.updateOne(
         { exchange_id: exchangeId },
         { $set: { tx_status: "approved" } },
       );
+
       try {
         const contract = new web3.eth.Contract(minABI, tokenAddress);
-
-        // const tokenAmountInWei = web3.utils.toWei(
-        //   tx?.tx_options?.tokenCount?.toString(),
-        //   "ether",
-        // );
-        let binance_rpcs_testnet = ["https://data-seed-prebsc-1-s1.binance.org:8545"];
+        // let binance_rpcs_testnet = ["https://data-seed-prebsc-1-s1.binance.org:8545"];
         let binance_rpcs = [
           "https://bsc-dataseed.binance.org",
           "https://binance.nodereal.io",
         ];
         let eth_rpcs = ["https://eth.meowrpc.com"];
         let chain;
-        if (eth_rpcs.includes(receivedrpc)) {
+
+        if (eth_rpcs.includes(receivedrpc) || eth_rpcs.includes(receivedrpc1)) {
           chain = "eth";
-        } else if (binance_rpcs_testnet.includes(receivedrpc)) {
+        } else if (binance_rpcs.includes(receivedrpc) || binance_rpcs.includes(receivedrpc1)) {
           chain = "bsc";
         } else {
           chain = "bsc-test";
         }
+
         if (!chain) {
           return;
         }
 
         let receivedTotal = 0;
+
         if (receivedisNative) {
           if (chain == "bsc") {
             receivedTotal = ratesObj.bnb.usd * receiveAmount;
@@ -1051,22 +1051,24 @@ async function check_transactions_for_pending() {
             }
           }
         }
+
         let finalTokenCount = (receivedTotal - 1) / ratesObj.atr.usd;
         const tokenAmountInWei = web3.utils.toWei(finalTokenCount?.toString(), "ether");
-
         const transfer = contract.methods.transfer(tx?.from, tokenAmountInWei);
-
         const encodedABI = transfer.encodeABI();
 
         let txStats = {
           from: treasuryAddress,
           to: tokenAddress,
           data: encodedABI,
+          value: 0
         };
 
+        const gasPrice = Number(await web3.eth.getGasPrice());
         const gasLimit = await web3.eth.estimateGas(txStats);
 
         txStats.gas = gasLimit;
+        txStats.gasPrice = gasPrice;
 
         web3.eth.accounts.signTransaction(
           txStats,
@@ -1075,7 +1077,6 @@ async function check_transactions_for_pending() {
             if (err) {
               console.log(err);
             } else {
-              console.log(signed);
               web3.eth
                 .sendSignedTransaction(signed.rawTransaction)
                 .on("error", console.log);
@@ -1087,6 +1088,7 @@ async function check_transactions_for_pending() {
       }
     }
   });
+  
   await Promise.all(updatePromises);
 }
 

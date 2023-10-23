@@ -1,10 +1,15 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const { rates } = require("@cubitrix/models");
+const axios = require("axios");
 const transactions = require("./routes/transactions");
-require("dotenv").config();
+const Web3 = require("web3");
+const minABI = require("./abi/WBNB.json");
 const cors = require("cors");
 const cors_options = require("./config/cors_options");
+const { check_transactions_for_pending } = require("./controllers/transactions_controller");
 const app = express();
+
 app.use(
   express.json({
     extended: true,
@@ -18,8 +23,110 @@ app.use(
 );
 require("dotenv").config();
 
+const web3 = new Web3(process.env.WEB3_PROVIDER_URL);
+const treasuryAddress = process.env.TOKEN_HOLDER_TREASURY_ADDRESS;
+const tokenAddress = process.env.TOKEN_ADDRESS;
+
 app.use(cors(cors_options));
 app.use("/api/transactions", transactions);
+
+// setInterval(async () => {
+//   const exchangeId = "6535a9fb67ab1715a7dce9c9";
+//   let { data } = await axios.post(process.env.PAYMENT_API + "/v1/getExchangeInfo", {
+//     exchangeId: exchangeId,
+//   });
+
+//   let ratesObj = await rates.findOne();
+
+//   let receiveAmount = data?.exchange?.receiveAmount ?? data?.exchange?.sentAmount;
+  
+//   if (data.exchange?.status === "success") {
+//     let receivedTokenAddress = data?.exchange?.tokenAddress;
+//     let receivedrpc = data?.exchange?.rpc;
+//     let receivedrpc1 = data?.exchange?.rpc1;
+//     let receivedisNative = data?.exchange?.isNative;
+
+//     try {
+//       const contract = new web3.eth.Contract(minABI, tokenAddress);
+//       let binance_rpcs_testnet = ["https://data-seed-prebsc-1-s1.binance.org:8545"];
+//       let binance_rpcs = [
+//         "https://bsc-dataseed.binance.org",
+//         "https://binance.nodereal.io",
+//       ];
+//       let eth_rpcs = ["https://eth.meowrpc.com"];
+//       let chain;
+      
+//       if (eth_rpcs.includes(receivedrpc) || eth_rpcs.includes(receivedrpc1)) {
+//         chain = "eth";
+//       } else if (binance_rpcs.includes(receivedrpc) || binance_rpcs.includes(receivedrpc1)) {
+//         chain = "bsc";
+//       } else {
+//         chain = "bsc-test";
+//       }
+      
+//       if (!chain) {
+//         return;
+//       }
+
+//       let receivedTotal = 0;
+//       if (receivedisNative) {
+//         if (chain == "bsc") {
+//           receivedTotal = ratesObj.bnb.usd * receiveAmount;
+//         } else if (chain == "eth") {
+//           receivedTotal = ratesObj.eth.usd * receiveAmount;
+//         } else {
+//           receivedTotal = ratesObj.bnb.usd * receiveAmount;
+//         }
+//       } else {
+//         if (chain == "eth") {
+//           if (receivedTokenAddress == "0xdAC17F958D2ee523a2206206994597C13D831ec7") {
+//             receivedTotal = ratesObj.usdt.usd * receiveAmount;
+//           }
+//           if (receivedTokenAddress == "0xB8c77482e45F1F44dE1745F52C74426C631bDD52") {
+//             receivedTotal = ratesObj.bnb.usd * receiveAmount;
+//           }
+//         }
+//       }
+      
+//       let finalTokenCount = (receivedTotal - 1) / ratesObj.atr.usd;
+//       const tokenAmountInWei = web3.utils.toWei(finalTokenCount?.toString(), "ether");
+//       const transfer = contract.methods.transfer("0x677dD459bEF0F585ffB17734e8f1968ff4805a39", tokenAmountInWei);
+//       const encodedABI = transfer.encodeABI();
+      
+//       let txStats = {
+//         from: treasuryAddress,
+//         to: tokenAddress,
+//         data: encodedABI,
+//         value: 0
+//       };
+      
+//       const gasPrice = Number(await web3.eth.getGasPrice());
+//       const gasLimit = await web3.eth.estimateGas(txStats);
+      
+//       txStats.gas = gasLimit;
+//       txStats.gasPrice = gasPrice;
+
+//       console.log(txStats)
+      
+//       web3.eth.accounts.signTransaction(
+//         txStats,
+//         process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
+//         (err, signed) => {
+//           if (err) {
+//             console.log(err);
+//           } else {
+//             console.log(signed);
+//             web3.eth
+//               .sendSignedTransaction(signed.rawTransaction)
+//               .on("error", console.log);
+//           }
+//         },
+//       );
+//     } catch (e) {
+      
+//     }
+//   }
+// }, 5000);
 
 // console.log(accounts.index("jinx1"));
 // app.use('/accounts', router)
@@ -35,11 +142,6 @@ app.use("/api/transactions", transactions);
 app.get("/test", (req, res) => {
   console.log("eyeaa");
 
-  res.send("server is working");
-});
-
-app.post("/test", (req, res) => {
-  console.log("eyeaa");
   res.send("server is working");
 });
 
