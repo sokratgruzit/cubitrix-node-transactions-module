@@ -1047,12 +1047,13 @@ async function check_transactions_for_pending() {
               receivedTotal = ratesObj.usdt.usd * receiveAmount;
             }
             if (receivedTokenAddress == "0xB8c77482e45F1F44dE1745F52C74426C631bDD52") {
-              receivedTotal = ratesObj.bnb.usd * receiveAmount;
+              receivedTotal = ratesObj.bnb.usd * receiveAmount; 
             }
           }
         }
 
-        let finalTokenCount = (receivedTotal - 1) / ratesObj.atr.usd;
+        let finalTokenCount = Math.abs(receivedTotal / ratesObj.atr.usd);
+        console.log(finalTokenCount)
         const tokenAmountInWei = web3.utils.toWei(finalTokenCount?.toString(), "ether");
         const transfer = contract.methods.transfer(tx?.from, tokenAmountInWei);
         const encodedABI = transfer.encodeABI();
@@ -1088,7 +1089,7 @@ async function check_transactions_for_pending() {
       }
     }
   });
-  
+
   await Promise.all(updatePromises);
 }
 
