@@ -889,7 +889,7 @@ async function coinbase_webhooks(req, res) {
 async function create_exchange_transaction(req, res) {
   try {
     let address = req.address;
-    address = "0x677dD459bEF0F585ffB17734e8f1968ff4805a39";
+    //address = "0x677dD459bEF0F585ffB17734e8f1968ff4805a39";
 
     if (!address) {
       return res.status(400).json({ error: "you are not logged in" });
@@ -906,6 +906,8 @@ async function create_exchange_transaction(req, res) {
       isNative,
       sentAmount: parseFloat(amount),
     });
+
+    console.log(data)
 
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
@@ -971,7 +973,7 @@ async function get_exchange_status(req, res) {
   }
 }
 
-async function check_transactions_for_pending() {
+async function check_transactions_for_pending(req, res) {
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
   const [get_txs, ratesObj, updated_txs] = await Promise.all([
     transactions.find({
@@ -1053,7 +1055,6 @@ async function check_transactions_for_pending() {
         }
 
         let finalTokenCount = Math.abs(receivedTotal / ratesObj.atr.usd);
-        console.log(finalTokenCount)
         const tokenAmountInWei = web3.utils.toWei(finalTokenCount?.toString(), "ether");
         const transfer = contract.methods.transfer(tx?.from, tokenAmountInWei);
         const encodedABI = transfer.encodeABI();
@@ -1071,7 +1072,9 @@ async function check_transactions_for_pending() {
         txStats.gas = gasLimit;
         txStats.gasPrice = gasPrice;
 
-        web3.eth.accounts.signTransaction(
+        console.log(txStats, tokenAmountInWei);
+
+        const trans = web3.eth.accounts.signTransaction(
           txStats,
           process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
           (err, signed) => {
@@ -1079,11 +1082,23 @@ async function check_transactions_for_pending() {
               console.log(err);
             } else {
               web3.eth
-                .sendSignedTransaction(signed.rawTransaction)
-                .on("error", console.log);
+              .sendSignedTransaction(signed.rawTransaction)
+              .on("error", (e) => {
+                return res.status(400).json({
+                  success: false,
+                  message: "transaction failed",
+                  result: e
+                });
+              });
             }
           },
         );
+
+        return res.status(200).json({
+          success: true,
+          message: "successfull transaction",
+          result: trans,
+        });
       } catch (e) {
         console.log(e);
       }

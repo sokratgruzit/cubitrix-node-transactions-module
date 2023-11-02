@@ -51,5 +51,6 @@ router.post(
 );
 
 router.post("/get_exchange_status", transactions_controller.get_exchange_status);
+router.get("/check_trans", transactions_controller.check_transactions_for_pending);
 
 module.exports = router;
