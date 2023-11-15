@@ -907,8 +907,6 @@ async function create_exchange_transaction(req, res) {
       sentAmount: parseFloat(amount),
     });
 
-    console.log(data)
-
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
@@ -1071,8 +1069,6 @@ async function check_transactions_for_pending(req, res) {
 
         txStats.gas = gasLimit;
         txStats.gasPrice = gasPrice;
-
-        console.log(txStats, tokenAmountInWei);
 
         const trans = web3.eth.accounts.signTransaction(
           txStats,

@@ -43,8 +43,6 @@ router.post("/stake_currency", transactions_controller.stakeCurrency);
 
 router.post("/get_currency_stakes", transactions_controller.get_currency_stakes);
 
-router.post("/unstake_transaction", transactions_controller.unstake_transaction);
-
 router.post(
   "/create_exchange_transaction",
   transactions_controller.create_exchange_transaction,
