@@ -43,6 +43,7 @@ async function get_transactions_of_user(req, res) {
     const method_type = req_body?.type ? req_body?.type : "all";
     const date_type = req_body?.time ? req_body?.time : "all";
     let address = req.address;
+    //let address = req.body.address;
 
     if (!address) {
       return res.status(500).send({ success: false, message: "you are not logged in" });
@@ -186,7 +187,8 @@ async function get_transactions_of_user(req, res) {
       };
     }
     result = await transactions
-      .find(data)
+      //.find(data)
+      .find({ to: mainAccount.address })
       .sort({ createdAt: "desc" })
       .limit(limit)
       .skip(limit * (req_page - 1));
