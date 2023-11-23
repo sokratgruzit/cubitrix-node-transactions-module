@@ -1,6 +1,6 @@
 {
   "name": "@cubitrix/cubitrix-node-transactions-module",
-  "version": "0.1.105",
+  "version": "0.1.106",
   "description": "module for managing globals data",
   "main": "transactions.js",
   "scripts": {
