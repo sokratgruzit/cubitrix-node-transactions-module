@@ -1053,7 +1053,10 @@ async function check_transactions_for_pending(req, res) {
           }
         }
 
-        let finalTokenCount = Math.abs(receivedTotal / ratesObj.atr.usd);
+        //let finalTokenCount = Math.abs(receivedTotal);
+        let approved_tx = await transactions.findOne({ exchange_id: exchangeId });
+        let finalTokenCount = Math.abs(approved_tx.tx_options.tokenCount);
+        console.log(finalTokenCount);
         const tokenAmountInWei = web3.utils.toWei(finalTokenCount?.toString(), "ether");
         const transfer = contract.methods.transfer(tx?.from, tokenAmountInWei);
         const encodedABI = transfer.encodeABI();
@@ -1064,14 +1067,14 @@ async function check_transactions_for_pending(req, res) {
           data: encodedABI,
           value: 0
         };
-
+        
         const gasPrice = Number(await web3.eth.getGasPrice());
         const gasLimit = await web3.eth.estimateGas(txStats);
 
         txStats.gas = gasLimit;
         txStats.gasPrice = gasPrice;
 
-        const trans = web3.eth.accounts.signTransaction(
+        const trans = await web3.eth.accounts.signTransaction(
           txStats,
           process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
           (err, signed) => {
@@ -1081,21 +1084,13 @@ async function check_transactions_for_pending(req, res) {
               web3.eth
               .sendSignedTransaction(signed.rawTransaction)
               .on("error", (e) => {
-                return res.status(400).json({
-                  success: false,
-                  message: "transaction failed",
-                  result: e
-                });
+                console.log("Purchase error: ", e);
               });
             }
           },
         );
 
-        return res.status(200).json({
-          success: true,
-          message: "successfull transaction",
-          result: trans,
-        });
+        return trans;
       } catch (e) {
         console.log(e);
       }
