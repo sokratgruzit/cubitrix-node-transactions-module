@@ -1057,7 +1057,7 @@ async function check_transactions_for_pending(req, res) {
         //let finalTokenCount = Math.abs(receivedTotal);
         let approved_tx = await transactions.findOne({ exchange_id: exchangeId });
         let finalTokenCount = Math.abs(approved_tx.tx_options.tokenCount);
-        console.log(finalTokenCount);
+        
         const tokenAmountInWei = web3.utils.toWei(finalTokenCount?.toString(), "ether");
         const transfer = contract.methods.transfer(tx?.from, tokenAmountInWei);
         const encodedABI = transfer.encodeABI();
