@@ -697,7 +697,7 @@ async function coinbase_deposit_transaction(req, res) {
         btc: true,
         eth: true,
         bnb: true,
-        tether: true,
+        usdt: true,
       },
       redirect_url: `${process.env.FRONTEND_URL}`,
       cancel_url: `${process.env.FRONTEND_URL}`,
