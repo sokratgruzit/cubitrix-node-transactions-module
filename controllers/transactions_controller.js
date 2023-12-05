@@ -1,4 +1,5 @@
 const main_helper = require("../helpers/index");
+const BigNumber = require('bignumber.js');
 const global_helper = require("../helpers/global_helper");
 const {
   transaction_types,
@@ -1401,9 +1402,9 @@ async function make_withdrawal(req, res) {
 
 async function direct_deposit(req, res) {
   try {
-    let { hash } = req.body;
+    let { hash, address } = req.body;
 
-    let address = req.address;
+    // let address = req.address;
 
     if (!address) {
       return res.status(400).json({ error: "you are not logged in" });
@@ -1412,15 +1413,15 @@ async function direct_deposit(req, res) {
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
-    const existingTransaction = await transactions.findOne({
-      tx_external_hash: hash,
-    });
+    // const existingTransaction = await transactions.findOne({
+    //   tx_external_hash: hash,
+    // });
 
-    if (existingTransaction) {
-      return res
-        .status(400)
-        .json({ error: "Transaction with this hash already exists." });
-    }
+    // if (existingTransaction) {
+    //   return res
+    //     .status(400)
+    //     .json({ error: "Transaction with this hash already exists." });
+    // }
 
     const [tx, ratesObj] = await Promise.all([
       web3.eth.getTransaction(hash),
@@ -1438,17 +1439,21 @@ async function direct_deposit(req, res) {
       tx.to.toLowerCase() === tokenAddress.toLowerCase() &&
       functionSignature === "0xa9059cbb"
     ) {
-      const numberOfTokens = decodedParameters["1"];
-      const [updatedAccount] = await Promise.all([
+        // const numberOfTokens = decodedParameters["1"];
+        const numberOfTokens = new BigNumber(decodedParameters["1"]);
+        const precision = new BigNumber('10').pow(18);
+        const tokenAmount = numberOfTokens.dividedBy(precision).toString();
+        
+        const [updatedAccount] = await Promise.all([
         accounts.findOneAndUpdate(
           { account_owner: address, account_category: "main" },
-          { $inc: { balance: numberOfTokens / 10 ** 18 } },
+          { $inc: { balance: tokenAmount } },
           { new: true }
         ),
         transactions.create({
           from: address,
           to: address,
-          amount: numberOfTokens / 10 ** 18,
+          amount: tokenAmount,
           tx_hash,
           tx_type: "deposit",
           tx_currency: "ether",
@@ -1460,6 +1465,8 @@ async function direct_deposit(req, res) {
           A1_price: ratesObj?.atr?.usd ?? 2,
         }),
       ]);
+
+      console.log(updatedAccount, "num");
 
       return main_helper.success_response(res, {
         message: "successfull transaction",

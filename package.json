@@ -10,8 +10,9 @@
   "author": "jinx",
   "license": "MIT",
   "dependencies": {
-    "@cubitrix/models": ">=0.1.36",
+    "@cubitrix/models": ">=0.1.14",
     "axios": ">=1.4.0",
+    "bignumber.js": "^9.1.2",
     "coinbase-commerce-node": "^1.0.4",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
