@@ -1413,15 +1413,15 @@ async function direct_deposit(req, res) {
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
-    // const existingTransaction = await transactions.findOne({
-    //   tx_external_hash: hash,
-    // });
+    const existingTransaction = await transactions.findOne({
+      tx_external_hash: hash,
+    });
 
-    // if (existingTransaction) {
-    //   return res
-    //     .status(400)
-    //     .json({ error: "Transaction with this hash already exists." });
-    // }
+    if (existingTransaction) {
+      return res
+        .status(400)
+        .json({ error: "Transaction with this hash already exists." });
+    }
 
     const [tx, ratesObj] = await Promise.all([
       web3.eth.getTransaction(hash),
