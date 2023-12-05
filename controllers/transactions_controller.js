@@ -1402,9 +1402,9 @@ async function make_withdrawal(req, res) {
 
 async function direct_deposit(req, res) {
   try {
-    let { hash, address } = req.body;
+    let { hash } = req.body;
 
-    // let address = req.address;
+    let address = req.address;
 
     if (!address) {
       return res.status(400).json({ error: "you are not logged in" });
