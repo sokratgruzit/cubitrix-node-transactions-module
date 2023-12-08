@@ -1826,6 +1826,66 @@ async function get_currency_stakes(req, res) {
   }
 }
 
+async function get_all_currency_stakes(req, res) {
+  try {
+    const statusFilter = "unpaid"; // Default to "unpaid" if status is not provided in the query
+    const stakes = await currencyStakes.find({ status: statusFilter });
+
+    return main_helper.success_response(res, stakes);
+  } catch (e) {
+    console.error(e);
+    return main_helper.error_response(res, "Error getting currency stakes");
+  }
+}
+
+async function give_rewards(req, res) {
+  let { currency_stakes_id } = req.body;
+
+  try {
+    // Find the currency stake and check its status
+    const existingStakes = await currencyStakes.findById(currency_stakes_id);
+
+    // Check if the currency stake was not found
+    if (!existingStakes) {
+      return main_helper.error_response(res, "Currency stake not found");
+    }
+
+    // Check if the status is already "paid"
+    if (existingStakes.status === "paid") {
+      return main_helper.error_response(res, "Currency stake already paid");
+    }
+
+    // Update the status of the currency stake
+    const updateStakes = await currencyStakes.findOneAndUpdate(
+      { _id: currency_stakes_id },
+      { status: "paid" },
+      { returnDocument: "after" }
+    );
+
+    const { expected_reward, currency } = existingStakes;
+
+    const query = { account_owner: updateStakes?.address };
+    const update = { $inc: { [`assets.${currency}`]: +expected_reward } };
+
+    // Update the user's account
+    const updateUserAccount = await accounts.findOneAndUpdate(query, update, {
+      returnDocument: "after",
+    });
+
+    // Respond with success and data
+    return main_helper.success_response(res, {
+      updateUserAccount,
+      updateStakes,
+    });
+  } catch (e) {
+    console.error(e);
+    return main_helper.error_response(
+      res,
+      `Error giving rewards: ${e.message}`
+    );
+  }
+}
+
 module.exports = {
   create_deposit_transaction,
   pending_deposit_transaction,
@@ -1842,6 +1902,8 @@ module.exports = {
   make_withdrawal,
   stakeCurrency,
   get_currency_stakes,
+  get_all_currency_stakes,
+  give_rewards,
   verify_external_transaction,
   create_exchange_transaction,
   get_exchange_status,
