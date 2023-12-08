@@ -1466,8 +1466,6 @@ async function direct_deposit(req, res) {
         }),
       ]);
 
-      console.log(updatedAccount, "num");
-
       return main_helper.success_response(res, {
         message: "successfull transaction",
         updatedAccount,
