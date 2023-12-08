@@ -1,5 +1,5 @@
 const main_helper = require("../helpers/index");
-const BigNumber = require('bignumber.js');
+const BigNumber = require("bignumber.js");
 const global_helper = require("../helpers/global_helper");
 const {
   transaction_types,
@@ -1439,12 +1439,12 @@ async function direct_deposit(req, res) {
       tx.to.toLowerCase() === tokenAddress.toLowerCase() &&
       functionSignature === "0xa9059cbb"
     ) {
-        // const numberOfTokens = decodedParameters["1"];
-        const numberOfTokens = new BigNumber(decodedParameters["1"]);
-        const precision = new BigNumber('10').pow(18);
-        const tokenAmount = numberOfTokens.dividedBy(precision).toString();
-        
-        const [updatedAccount] = await Promise.all([
+      // const numberOfTokens = decodedParameters["1"];
+      const numberOfTokens = new BigNumber(decodedParameters["1"]);
+      const precision = new BigNumber("10").pow(18);
+      const tokenAmount = numberOfTokens.dividedBy(precision).toString();
+
+      const [updatedAccount] = await Promise.all([
         accounts.findOneAndUpdate(
           { account_owner: address, account_category: "main" },
           { $inc: { balance: tokenAmount } },
@@ -1691,11 +1691,20 @@ async function exchange(req, res) {
   }
 }
 
-async function stakeCurrency(req, res) {
-  try {
-    let addr = req.address;
-    let { amount, currency, percentage = 0, duration } = req.body;
+// Assuming duration is in days and percentage is in percentage form
+const calculateExpectedReward = (amount, percentage, duration) => {
+  const annualPercentageYield = percentage / 100;
+  const dailyInterestRate = Math.pow(1 + annualPercentageYield, 1 / 365) - 1;
+  const expectedReward =
+    amount * Math.pow(1 + dailyInterestRate, parseFloat(duration)) - amount;
+  return expectedReward;
+};
 
+async function stakeCurrency(req, res) {
+  let addr = req.address;
+  let { amount, currency, percentage, duration } = req.body;
+
+  try {
     if (!addr) {
       return main_helper.error_response(res, "You are not logged in");
     }
@@ -1748,9 +1757,17 @@ async function stakeCurrency(req, res) {
       { new: true }
     );
 
+    // Usage in your code
+    const expected_reward = calculateExpectedReward(
+      amount,
+      percentage,
+      duration
+    );
+
     const createStakePromise = currencyStakes.create({
       address,
       amount: amount,
+      expected_reward,
       currency,
       percentage,
       expires,
