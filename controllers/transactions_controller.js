@@ -1828,8 +1828,7 @@ async function get_currency_stakes(req, res) {
 
 async function get_all_currency_stakes(req, res) {
   try {
-    const statusFilter = "unpaid"; // Default to "unpaid" if status is not provided in the query
-    const stakes = await currencyStakes.find({ status: statusFilter });
+    const stakes = await currencyStakes.find();
 
     return main_helper.success_response(res, stakes);
   } catch (e) {
@@ -1862,10 +1861,12 @@ async function give_rewards(req, res) {
       { returnDocument: "after" }
     );
 
-    const { expected_reward, currency } = existingStakes;
+    const { expected_reward, currency, amount } = existingStakes;
 
     const query = { account_owner: updateStakes?.address };
-    const update = { $inc: { [`assets.${currency}`]: +expected_reward } };
+    const update = {
+      $inc: { [`assets.${currency}`]: +(expected_reward + amount) },
+    };
 
     // Update the user's account
     const updateUserAccount = await accounts.findOneAndUpdate(query, update, {
