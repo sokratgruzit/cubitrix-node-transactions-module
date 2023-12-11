@@ -1701,14 +1701,17 @@ const calculateExpectedReward = (amount, percentage, duration) => {
 };
 
 async function stakeCurrency(req, res) {
+  // Extract necessary data from the request
   let addr = req.address;
   let { amount, currency, percentage, duration } = req.body;
 
   try {
+    // Check if address is provided
     if (!addr) {
       return main_helper.error_response(res, "You are not logged in");
     }
 
+    // Check if amount and currency are provided
     if (!amount || !currency) {
       return main_helper.error_response(
         res,
@@ -1716,9 +1719,11 @@ async function stakeCurrency(req, res) {
       );
     }
 
+    // Convert address to lowercase and amount to number
     const address = addr.toLowerCase();
     amount = Number(amount);
 
+    // Fetch main account and rates
     const [mainAccount, ratesObj] = await Promise.all([
       accounts.findOne({
         account_owner: address,
@@ -1727,43 +1732,41 @@ async function stakeCurrency(req, res) {
       rates.findOne(),
     ]);
 
+    // Check if main account exists
     if (!mainAccount) {
       return main_helper.error_response(res, "account not found");
     }
 
-    if (mainAccount.assets[currency] < amount) {
+    // Check if account has sufficient balance
+    if (mainAccount.assets[currency] <= amount) {
       return main_helper.error_response(res, "insufficient balance");
     }
 
+    // Calculate expiry date based on duration
     let expires;
-    if (duration === "360 D") {
-      expires = Date.now() + 360 * 24 * 60 * 60 * 1000;
-    } else if (duration === "180 D") {
-      expires = Date.now() + 180 * 24 * 60 * 60 * 1000;
-    } else if (duration === "90 D") {
-      expires = Date.now() + 90 * 24 * 60 * 60 * 1000;
-    } else if (duration === "30 D") {
-      expires = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    switch (duration) {
+      case "360 D":
+        expires = Date.now() + 360 * 24 * 60 * 60 * 1000;
+        break;
+      case "180 D":
+        expires = Date.now() + 180 * 24 * 60 * 60 * 1000;
+        break;
+      case "90 D":
+        expires = Date.now() + 90 * 24 * 60 * 60 * 1000;
+        break;
+      case "30 D":
+        expires = Date.now() + 30 * 24 * 60 * 60 * 1000;
+        break;
     }
 
-    const updateAccountPromise = accounts.findOneAndUpdate(
-      { account_owner: address, account_category: "main" },
-      {
-        $inc: {
-          [`assets.${currency}Staked`]: amount,
-          [`assets.${currency}`]: -amount,
-        },
-      },
-      { new: true }
-    );
-
-    // Usage in your code
+    // Calculate expected reward
     const expected_reward = calculateExpectedReward(
       amount,
       percentage,
       duration
     );
 
+    // Create stake
     const createStakePromise = currencyStakes.create({
       address,
       amount: amount,
@@ -1772,9 +1775,13 @@ async function stakeCurrency(req, res) {
       percentage,
       expires,
     });
+
+    // Generate and format transaction hash
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
-    const createTransactionPromice = transactions.create({
+
+    // Create transaction
+    const createTransactionPromise = transactions.create({
       from: address,
       to: address,
       amount: amount,
@@ -1794,14 +1801,35 @@ async function stakeCurrency(req, res) {
       A1_price: ratesObj?.atr?.usd ?? 2,
     });
 
-    const [updatedAccount, createdStake, createTransaction] = await Promise.all(
-      [updateAccountPromise, createStakePromise, createTransactionPromice]
+    // Wait for stake creation to complete
+    const [createdStake] = await Promise.all([createStakePromise]);
+
+    // Update account
+    const updateAccountPromise = accounts.findOneAndUpdate(
+      { account_owner: address, account_category: "main" },
+      {
+        $inc: {
+          [`assets.${currency}`]: -amount,
+        },
+        $set: {
+          currencyStakes: createdStake._id,
+        },
+      },
+      { new: true }
     );
 
+    // Wait for account update and transaction creation to complete
+    const [updatedAccount, createTransaction] = await Promise.all([
+      updateAccountPromise,
+      createTransactionPromise,
+    ]);
+
+    // Check if stake was created successfully
     if (!createdStake) {
       return main_helper.error_response(res, "error staking currency");
     }
 
+    // Return success response with updated account
     return main_helper.success_response(res, updatedAccount);
   } catch (e) {
     console.log(e, "error staking currency");
@@ -1812,6 +1840,25 @@ async function stakeCurrency(req, res) {
 async function get_currency_stakes(req, res) {
   try {
     let address = req.address;
+    console.log(address);
+
+    if (!address) {
+      return main_helper.error_response(res, "You are not logged in");
+    }
+
+    const stakes = await currencyStakes.find({ address });
+
+    return main_helper.success_response(res, stakes);
+  } catch (e) {
+    console.log(e);
+    return main_helper.error_response(res, "error getting currency stakes");
+  }
+}
+
+async function get_currency_stakes_unstake(req, res) {
+  try {
+    let address = req.address;
+    console.log(address);
 
     if (!address) {
       return main_helper.error_response(res, "You are not logged in");
@@ -1892,6 +1939,7 @@ module.exports = {
   pending_deposit_transaction,
   coinbase_deposit_transaction,
   create_global_option,
+  get_currency_stakes_unstake,
   update_options,
   coinbase_webhooks,
   get_transactions_of_user,
