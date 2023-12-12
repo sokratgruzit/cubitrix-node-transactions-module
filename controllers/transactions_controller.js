@@ -1089,14 +1089,14 @@ async function check_transactions_for_pending(req, res) {
       }
     );
 
-    let receiveAmount =
-      data?.exchange?.receiveAmount ?? data?.exchange?.sentAmount;
+    // let receiveAmount =
+    //   data?.exchange?.receiveAmount ?? data?.exchange?.sentAmount;
 
     if (data.exchange?.status === "success") {
-      let receivedTokenAddress = data?.exchange?.tokenAddress;
-      let receivedrpc = data?.exchange?.rpc;
-      let receivedrpc1 = data?.exchange?.rpc1;
-      let receivedisNative = data?.exchange?.isNative;
+      // let receivedTokenAddress = data?.exchange?.tokenAddress;
+      // let receivedrpc = data?.exchange?.rpc;
+      // let receivedrpc1 = data?.exchange?.rpc1;
+      // let receivedisNative = data?.exchange?.isNative;
 
       await transactions.updateOne(
         { exchange_id: exchangeId },
@@ -1104,100 +1104,128 @@ async function check_transactions_for_pending(req, res) {
       );
 
       try {
-        const contract = new web3.eth.Contract(minABI, tokenAddress);
-        // let binance_rpcs_testnet = ["https://data-seed-prebsc-1-s1.binance.org:8545"];
-        let binance_rpcs = [
-          "https://bsc-dataseed.binance.org",
-          "https://binance.nodereal.io",
-        ];
-        let eth_rpcs = ["https://eth.meowrpc.com"];
-        let chain;
-
-        if (eth_rpcs.includes(receivedrpc) || eth_rpcs.includes(receivedrpc1)) {
-          chain = "eth";
-        } else if (
-          binance_rpcs.includes(receivedrpc) ||
-          binance_rpcs.includes(receivedrpc1)
-        ) {
-          chain = "bsc";
-        } else {
-          chain = "bsc-test";
-        }
-
-        if (!chain) {
-          return;
-        }
-
-        let receivedTotal = 0;
-
-        if (receivedisNative) {
-          if (chain == "bsc") {
-            receivedTotal = ratesObj.bnb.usd * receiveAmount;
-          } else if (chain == "eth") {
-            receivedTotal = ratesObj.eth.usd * receiveAmount;
-          } else {
-            receivedTotal = ratesObj.bnb.usd * receiveAmount;
-          }
-        } else {
-          if (chain == "eth") {
-            if (
-              receivedTokenAddress ==
-              "0xdAC17F958D2ee523a2206206994597C13D831ec7"
-            ) {
-              receivedTotal = ratesObj.usdt.usd * receiveAmount;
-            }
-            if (
-              receivedTokenAddress ==
-              "0xB8c77482e45F1F44dE1745F52C74426C631bDD52"
-            ) {
-              receivedTotal = ratesObj.bnb.usd * receiveAmount;
-            }
-          }
-        }
-
-        //let finalTokenCount = Math.abs(receivedTotal);
         let approved_tx = await transactions.findOne({
           exchange_id: exchangeId,
         });
+  
         let finalTokenCount = Math.abs(approved_tx.tx_options.tokenCount);
 
-        const tokenAmountInWei = web3.utils.toWei(
-          finalTokenCount?.toString(),
-          "ether"
-        );
-        const transfer = contract.methods.transfer(tx?.from, tokenAmountInWei);
-        const encodedABI = transfer.encodeABI();
-
-        let txStats = {
-          from: treasuryAddress,
-          to: tokenAddress,
-          data: encodedABI,
-          value: 0,
-        };
-
-        const gasPrice = Number(await web3.eth.getGasPrice());
-        const gasLimit = await web3.eth.estimateGas(txStats);
-
-        txStats.gas = gasLimit;
-        txStats.gasPrice = gasPrice;
-
-        const trans = await web3.eth.accounts.signTransaction(
-          txStats,
-          process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
-          (err, signed) => {
-            if (err) {
-              console.log(err);
-            } else {
-              web3.eth
-                .sendSignedTransaction(signed.rawTransaction)
-                .on("error", (e) => {
-                  console.log("Purchase error: ", e);
-                });
-            }
-          }
+        let transaction = await accounts.findOneAndUpdate(
+          { account_owner: approved_tx.from, account_category: "main" },
+          { $inc: { balance: finalTokenCount } },
+          { new: true }
         );
 
-        return trans;
+        return transaction;
+        // const contract = new web3.eth.Contract(minABI, tokenAddress);
+        // // let binance_rpcs_testnet = ["https://data-seed-prebsc-1-s1.binance.org:8545"];
+        // let binance_rpcs = [
+        //   "https://bsc-dataseed.binance.org",
+        //   "https://binance.nodereal.io",
+        // ];
+        // let eth_rpcs = ["https://eth.meowrpc.com"];
+        // let chain;
+
+        // if (eth_rpcs.includes(receivedrpc) || eth_rpcs.includes(receivedrpc1)) {
+        //   chain = "eth";
+        // } else if (
+        //   binance_rpcs.includes(receivedrpc) ||
+        //   binance_rpcs.includes(receivedrpc1)
+        // ) {
+        //   chain = "bsc";
+        // } else {
+        //   chain = "bsc-test";
+        // }
+
+        // if (!chain) {
+        //   return;
+        // }
+
+        // let receivedTotal = 0;
+
+        // if (receivedisNative) {
+        //   if (chain == "bsc") {
+        //     receivedTotal = ratesObj.bnb.usd * receiveAmount;
+        //   } else if (chain == "eth") {
+        //     receivedTotal = ratesObj.eth.usd * receiveAmount;
+        //   } else {
+        //     receivedTotal = ratesObj.bnb.usd * receiveAmount;
+        //   }
+        // } else {
+        //   if (chain == "eth") {
+        //     if (
+        //       receivedTokenAddress ==
+        //       "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+        //     ) {
+        //       receivedTotal = ratesObj.usdt.usd * receiveAmount;
+        //     }
+        //     if (
+        //       receivedTokenAddress ==
+        //       "0xB8c77482e45F1F44dE1745F52C74426C631bDD52"
+        //     ) {
+        //       receivedTotal = ratesObj.bnb.usd * receiveAmount;
+        //     }
+        //   }
+        // }
+
+        // //let finalTokenCount = Math.abs(receivedTotal);
+        // let approved_tx = await transactions.findOne({
+        //   exchange_id: exchangeId,
+        // });
+
+        // let finalTokenCount = Math.abs(approved_tx.tx_options.tokenCount);
+
+        // const tokenAmountInWei = web3.utils.toWei(
+        //   finalTokenCount?.toString(),
+        //   "ether"
+        // );
+        
+        // const transfer = contract.methods.transfer(tx?.from, tokenAmountInWei);
+        // const encodedABI = transfer.encodeABI();
+
+        // let txStats = {
+        //   from: treasuryAddress,
+        //   to: tokenAddress,
+        //   data: encodedABI,
+        //   value: 0,
+        // };
+
+        // const gasPrice = Number(await web3.eth.getGasPrice());
+        // const gasLimit = await web3.eth.estimateGas(txStats);
+
+        // txStats.gas = gasLimit;
+        // txStats.gasPrice = gasPrice;
+
+        // const trans = await web3.eth.accounts.signTransaction(
+        //   txStats,
+        //   process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
+        //   (err, signed) => {
+        //     if (err) {
+        //       console.log(err);
+        //     } else {
+        //       web3.eth
+        //       .sendSignedTransaction(signed.rawTransaction)
+        //       .on('confirmation', async (confirmationNumber, receipt) => {
+        //         console.log('Confirmation number:', confirmationNumber);
+                
+        //         // If you want to perform an action after a specific number of confirmations
+        //         const desiredConfirmations = 3;
+
+        //         if (confirmationNumber >= desiredConfirmations) {
+        //           const transactionHash = receipt.transactionHash;
+        //           await web3.eth.getTransaction(transactionHash)
+        //           // You can also stop listening to further confirmations if needed
+        //           this.off('confirmation');
+        //         }
+        //       })
+        //       .on("error", (e) => {
+        //         console.log("Purchase error: ", e);
+        //       });
+        //     }
+        //   }
+        // );
+
+        // return trans;
       } catch (e) {
         console.log(e);
       }
@@ -1217,6 +1245,7 @@ async function make_withdrawal(req, res) {
   }
 
   amount = parseFloat(amount);
+
   try {
     let [mainAccount, treasury, ratesObj] = await Promise.all([
       accounts.findOne({
@@ -1465,8 +1494,6 @@ async function direct_deposit(req, res) {
           A1_price: ratesObj?.atr?.usd ?? 2,
         }),
       ]);
-
-      console.log(updatedAccount, "num");
 
       return main_helper.success_response(res, {
         message: "successfull transaction",
