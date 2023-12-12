@@ -1811,15 +1811,12 @@ async function stakeCurrency(req, res) {
         $inc: {
           [`assets.${currency}`]: -amount,
         },
-        $set: {
-          currencyStakes: createdStake._id,
-        },
       },
       { new: true }
     );
 
     // Wait for account update and transaction creation to complete
-    const [updatedAccount, createTransaction] = await Promise.all([
+    const [updatedAccount] = await Promise.all([
       updateAccountPromise,
       createTransactionPromise,
     ]);
@@ -1840,25 +1837,7 @@ async function stakeCurrency(req, res) {
 async function get_currency_stakes(req, res) {
   try {
     let address = req.address;
-    console.log(address);
-
-    if (!address) {
-      return main_helper.error_response(res, "You are not logged in");
-    }
-
-    const stakes = await currencyStakes.find({ address });
-
-    return main_helper.success_response(res, stakes);
-  } catch (e) {
-    console.log(e);
-    return main_helper.error_response(res, "error getting currency stakes");
-  }
-}
-
-async function get_currency_stakes_unstake(req, res) {
-  try {
-    let address = req.address;
-    console.log(address);
+    console.log(address, "get_currency_stakes");
 
     if (!address) {
       return main_helper.error_response(res, "You are not logged in");
@@ -1939,7 +1918,6 @@ module.exports = {
   pending_deposit_transaction,
   coinbase_deposit_transaction,
   create_global_option,
-  get_currency_stakes_unstake,
   update_options,
   coinbase_webhooks,
   get_transactions_of_user,
