@@ -1880,37 +1880,33 @@ async function get_currency_stakes(req, res) {
 
 async function get_currency_stakes_by_status(req, res) {
   try {
-    let { status, address } = req.body;
+    const { status, address } = req.body;
     console.log(req.body, "get_currency_stakes_by_status");
 
-    if (!status && !address) {
-      return main_helper.error_response(res, "status is requierd");
+    // if (!address) {
+    if (status === "unpaid") {
+      const stakes = await currencyStakes.find({ status: "unpaid" });
+      return main_helper.success_response(res, stakes);
     }
-    let stakes;
-    if (!status) {
-      stakes = await currencyStakes.find({ address });
-    }
-    if (!address) {
-      stakes = await currencyStakes.find({ status });
+    if (status === "paid") {
+      const stakes = await currencyStakes.find({ status: "paid" });
+      return main_helper.success_response(res, stakes);
     } else {
-      stakes = await currencyStakes.find({ address, status });
+      if (address) {
+        const stakes = await currencyStakes.find({ address });
+        return main_helper.success_response(res, stakes);
+      } else {
+        const stakes = await currencyStakes.find({});
+        return main_helper.success_response(res, stakes);
+      }
     }
-
-    return main_helper.success_response(res, stakes);
+    // } else {
+    //   const stakes = await currencyStakes.find({ address });
+    //   return main_helper.success_response(res, stakes);
+    // }
   } catch (e) {
     console.log(e);
     return main_helper.error_response(res, "error getting currency stakes");
-  }
-}
-
-async function get_all_currency_stakes(req, res) {
-  try {
-    const stakes = await currencyStakes.find({});
-
-    return main_helper.success_response(res, stakes);
-  } catch (e) {
-    console.error(e);
-    return main_helper.error_response(res, "Error getting currency stakes");
   }
 }
 
@@ -1981,7 +1977,6 @@ module.exports = {
   stakeCurrency,
   get_currency_stakes,
   get_currency_stakes_by_status,
-  get_all_currency_stakes,
   give_rewards,
   verify_external_transaction,
   create_exchange_transaction,
