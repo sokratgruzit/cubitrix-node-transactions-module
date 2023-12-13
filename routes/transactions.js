@@ -58,6 +58,10 @@ router.post(
   "/get_currency_stakes",
   transactions_controller.get_currency_stakes
 );
+router.get(
+  "/get_all_currency_stakes",
+  transactions_controller.get_all_currency_stakes
+);
 router.post("/give_rewards", transactions_controller.give_rewards);
 
 router.post(

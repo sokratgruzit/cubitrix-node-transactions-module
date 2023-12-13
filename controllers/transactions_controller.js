@@ -1864,7 +1864,6 @@ async function stakeCurrency(req, res) {
 async function get_currency_stakes(req, res) {
   try {
     let address = req.address;
-    console.log(address, "get_currency_stakes");
 
     if (!address) {
       return main_helper.error_response(res, "You are not logged in");
@@ -1881,14 +1880,21 @@ async function get_currency_stakes(req, res) {
 
 async function get_currency_stakes_by_status(req, res) {
   try {
-    let { status } = req.body;
+    let { status, address } = req.body;
     console.log(req.body, "get_currency_stakes_by_status");
 
-    if (!status) {
+    if (!status && !address) {
       return main_helper.error_response(res, "status is requierd");
     }
-
-    const stakes = await currencyStakes.find({ status });
+    let stakes;
+    if (!status) {
+      stakes = await currencyStakes.find({ address });
+    }
+    if (!address) {
+      stakes = await currencyStakes.find({ status });
+    } else {
+      stakes = await currencyStakes.find({ address, status });
+    }
 
     return main_helper.success_response(res, stakes);
   } catch (e) {
@@ -1899,7 +1905,7 @@ async function get_currency_stakes_by_status(req, res) {
 
 async function get_all_currency_stakes(req, res) {
   try {
-    const stakes = await currencyStakes.find();
+    const stakes = await currencyStakes.find({});
 
     return main_helper.success_response(res, stakes);
   } catch (e) {
