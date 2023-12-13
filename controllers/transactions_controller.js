@@ -1107,7 +1107,7 @@ async function check_transactions_for_pending(req, res) {
         let approved_tx = await transactions.findOne({
           exchange_id: exchangeId,
         });
-  
+
         let finalTokenCount = Math.abs(approved_tx.tx_options.tokenCount);
 
         let transaction = await accounts.findOneAndUpdate(
@@ -1179,7 +1179,7 @@ async function check_transactions_for_pending(req, res) {
         //   finalTokenCount?.toString(),
         //   "ether"
         // );
-        
+
         // const transfer = contract.methods.transfer(tx?.from, tokenAmountInWei);
         // const encodedABI = transfer.encodeABI();
 
@@ -1207,7 +1207,7 @@ async function check_transactions_for_pending(req, res) {
         //       .sendSignedTransaction(signed.rawTransaction)
         //       .on('confirmation', async (confirmationNumber, receipt) => {
         //         console.log('Confirmation number:', confirmationNumber);
-                
+
         //         // If you want to perform an action after a specific number of confirmations
         //         const desiredConfirmations = 3;
 
@@ -1879,6 +1879,24 @@ async function get_currency_stakes(req, res) {
   }
 }
 
+async function get_currency_stakes_by_status(req, res) {
+  try {
+    let { status } = req.body;
+    console.log(req.body, "get_currency_stakes_by_status");
+
+    if (!status) {
+      return main_helper.error_response(res, "status is requierd");
+    }
+
+    const stakes = await currencyStakes.find({ status });
+
+    return main_helper.success_response(res, stakes);
+  } catch (e) {
+    console.log(e);
+    return main_helper.error_response(res, "error getting currency stakes");
+  }
+}
+
 async function get_all_currency_stakes(req, res) {
   try {
     const stakes = await currencyStakes.find();
@@ -1956,6 +1974,7 @@ module.exports = {
   make_withdrawal,
   stakeCurrency,
   get_currency_stakes,
+  get_currency_stakes_by_status,
   get_all_currency_stakes,
   give_rewards,
   verify_external_transaction,

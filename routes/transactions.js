@@ -48,8 +48,12 @@ router.post(
 
 router.post("/exchange", transactions_controller.exchange);
 router.post("/make_withdrawal", transactions_controller.make_withdrawal);
-router.post("/stake_currency", transactions_controller.stakeCurrency);
 
+router.post("/stake_currency", transactions_controller.stakeCurrency);
+router.post(
+  "/get_currency_stakes_by_status",
+  transactions_controller.get_currency_stakes_by_status
+);
 router.post(
   "/get_currency_stakes",
   transactions_controller.get_currency_stakes
