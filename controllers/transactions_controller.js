@@ -1770,19 +1770,27 @@ async function stakeCurrency(req, res) {
     }
 
     // Calculate expiry date based on duration
-    let expires;
+    let unstake_time;
     switch (duration) {
       case "360 D":
-        expires = Date.now() + 360 * 24 * 60 * 60 * 1000;
+        unstake_time = Date.parse(
+          new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
+        );
         break;
       case "180 D":
-        expires = Date.now() + 180 * 24 * 60 * 60 * 1000;
+        unstake_time = Date.parse(
+          new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString()
+        );
         break;
       case "90 D":
-        expires = Date.now() + 90 * 24 * 60 * 60 * 1000;
+        unstake_time = Date.parse(
+          new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString()
+        );
         break;
       case "30 D":
-        expires = Date.now() + 30 * 24 * 60 * 60 * 1000;
+        unstake_time = Date.parse(
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        );
         break;
     }
 
@@ -1800,7 +1808,7 @@ async function stakeCurrency(req, res) {
       expected_reward,
       currency,
       percentage,
-      expires,
+      unstake_time: unstake_time.toString(),
     });
 
     // Generate and format transaction hash
@@ -1823,7 +1831,7 @@ async function stakeCurrency(req, res) {
         amount: amount,
         currency,
         percentage,
-        expires,
+        unstake_time,
       },
       A1_price: ratesObj?.atr?.usd ?? 2,
     });
