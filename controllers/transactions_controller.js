@@ -1808,7 +1808,7 @@ async function stakeCurrency(req, res) {
       expected_reward,
       currency,
       percentage,
-      unstake_time: unstake_time.toString(),
+      unstake_time,
     });
 
     // Generate and format transaction hash
