@@ -1829,7 +1829,7 @@ async function stakeCurrency(req, res) {
       tx_currency: "currency",
       tx_options: {
         amount: amount,
-        currency,
+        toAccType: currency,
         percentage,
         unstake_time,
       },
