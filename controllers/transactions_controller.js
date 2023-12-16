@@ -1891,27 +1891,27 @@ async function get_currency_stakes_by_status(req, res) {
     const { status, address } = req.body;
     console.log(req.body, "get_currency_stakes_by_status");
 
-    // if (!address) {
-    if (status === "unpaid") {
-      const stakes = await currencyStakes.find({ status: "unpaid" });
-      return main_helper.success_response(res, stakes);
-    }
-    if (status === "paid") {
-      const stakes = await currencyStakes.find({ status: "paid" });
-      return main_helper.success_response(res, stakes);
-    } else {
-      if (address) {
-        const stakes = await currencyStakes.find({ address });
-        return main_helper.success_response(res, stakes);
-      } else {
-        const stakes = await currencyStakes.find({});
+    if (!address) {
+      if (status === "unpaid") {
+        const stakes = await currencyStakes.find({ status: "unpaid" });
         return main_helper.success_response(res, stakes);
       }
+      if (status === "paid") {
+        const stakes = await currencyStakes.find({ status: "paid" });
+        return main_helper.success_response(res, stakes);
+      } else {
+        if (address) {
+          const stakes = await currencyStakes.find({ address });
+          return main_helper.success_response(res, stakes);
+        } else {
+          const stakes = await currencyStakes.find({});
+          return main_helper.success_response(res, stakes);
+        }
+      }
+    } else {
+      const stakes = await currencyStakes.find({ address });
+      return main_helper.success_response(res, stakes);
     }
-    // } else {
-    //   const stakes = await currencyStakes.find({ address });
-    //   return main_helper.success_response(res, stakes);
-    // }
   } catch (e) {
     console.log(e);
     return main_helper.error_response(res, "error getting currency stakes");
