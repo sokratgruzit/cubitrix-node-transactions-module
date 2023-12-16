@@ -1889,7 +1889,6 @@ async function get_currency_stakes(req, res) {
 async function get_currency_stakes_by_status(req, res) {
   try {
     const { status, address } = req.body;
-    console.log(req.body, "get_currency_stakes_by_status");
 
     if (!address) {
       if (status === "unpaid") {
@@ -1900,16 +1899,13 @@ async function get_currency_stakes_by_status(req, res) {
         const stakes = await currencyStakes.find({ status: "paid" });
         return main_helper.success_response(res, stakes);
       } else {
-        if (address) {
-          const stakes = await currencyStakes.find({ address });
-          return main_helper.success_response(res, stakes);
-        } else {
-          const stakes = await currencyStakes.find({});
-          return main_helper.success_response(res, stakes);
-        }
+        const stakes = await currencyStakes.find({});
+        return main_helper.success_response(res, stakes);
       }
     } else {
-      const stakes = await currencyStakes.find({ address });
+      const addr = address.toLowerCase();
+
+      const stakes = await currencyStakes.find({ addr });
       return main_helper.success_response(res, stakes);
     }
   } catch (e) {
