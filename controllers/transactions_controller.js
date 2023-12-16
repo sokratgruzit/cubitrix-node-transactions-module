@@ -1943,7 +1943,10 @@ async function give_rewards(req, res) {
 
     const query = { account_owner: updateStakes?.address };
     const update = {
-      $inc: { [`assets.${currency}`]: +(expected_reward + amount) },
+      $inc: {
+        [`assets.${currency}`]: +(expected_reward + amount),
+        [`assets.${currency}Staked`]: -amount,
+      },
     };
 
     // Update the user's account
