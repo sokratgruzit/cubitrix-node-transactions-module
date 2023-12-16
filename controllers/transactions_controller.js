@@ -1844,6 +1844,7 @@ async function stakeCurrency(req, res) {
       { account_owner: address, account_category: "main" },
       {
         $inc: {
+          [`assets.${currency}Staked`]: +amount,
           [`assets.${currency}`]: -amount,
         },
       },
