@@ -1844,6 +1844,7 @@ async function stakeCurrency(req, res) {
       { account_owner: address, account_category: "main" },
       {
         $inc: {
+          [`assets.${currency}Staked`]: +amount,
           [`assets.${currency}`]: -amount,
         },
       },
@@ -1889,29 +1890,25 @@ async function get_currency_stakes(req, res) {
 async function get_currency_stakes_by_status(req, res) {
   try {
     const { status, address } = req.body;
-    console.log(req.body, "get_currency_stakes_by_status");
 
-    // if (!address) {
-    if (status === "unpaid") {
-      const stakes = await currencyStakes.find({ status: "unpaid" });
-      return main_helper.success_response(res, stakes);
-    }
-    if (status === "paid") {
-      const stakes = await currencyStakes.find({ status: "paid" });
-      return main_helper.success_response(res, stakes);
-    } else {
-      if (address) {
-        const stakes = await currencyStakes.find({ address });
+    if (!address) {
+      if (status === "unpaid") {
+        const stakes = await currencyStakes.find({ status: "unpaid" });
+        return main_helper.success_response(res, stakes);
+      }
+      if (status === "paid") {
+        const stakes = await currencyStakes.find({ status: "paid" });
         return main_helper.success_response(res, stakes);
       } else {
         const stakes = await currencyStakes.find({});
         return main_helper.success_response(res, stakes);
       }
+    } else {
+      const addr = address.toLowerCase();
+
+      const stakes = await currencyStakes.find({ address: addr });
+      return main_helper.success_response(res, stakes);
     }
-    // } else {
-    //   const stakes = await currencyStakes.find({ address });
-    //   return main_helper.success_response(res, stakes);
-    // }
   } catch (e) {
     console.log(e);
     return main_helper.error_response(res, "error getting currency stakes");
@@ -1946,7 +1943,10 @@ async function give_rewards(req, res) {
 
     const query = { account_owner: updateStakes?.address };
     const update = {
-      $inc: { [`assets.${currency}`]: +(expected_reward + amount) },
+      $inc: {
+        [`assets.${currency}`]: +(expected_reward + amount),
+        [`assets.${currency}Staked`]: -amount,
+      },
     };
 
     // Update the user's account
