@@ -1905,7 +1905,7 @@ async function get_currency_stakes_by_status(req, res) {
     } else {
       const addr = address.toLowerCase();
 
-      const stakes = await currencyStakes.find({ addr });
+      const stakes = await currencyStakes.find({ address: addr });
       return main_helper.success_response(res, stakes);
     }
   } catch (e) {
