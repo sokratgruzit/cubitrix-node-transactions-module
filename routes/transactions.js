@@ -65,13 +65,8 @@ router.post(
   transactions_controller.create_exchange_transaction
 );
 
-router.post(
-  "/get_exchange_status",
-  transactions_controller.get_exchange_status
-);
-router.get(
-  "/check_trans",
-  transactions_controller.check_transactions_for_pending
-);
+router.post("/get_exchange_status", transactions_controller.get_exchange_status);
+router.get("/check_trans", transactions_controller.check_transactions_for_pending);
+router.post("/cancel_exchange", transactions_controller.cancel_exchange);
 
 module.exports = router;
