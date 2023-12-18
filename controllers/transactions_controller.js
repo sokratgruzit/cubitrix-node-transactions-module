@@ -1062,7 +1062,7 @@ async function get_exchange_status(req, res) {
 }
 
 async function check_transactions_for_pending(req, res) {
-  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const hourAgo = new Date(Date.now() - 5 * 60 * 1000);
   const [get_txs, ratesObj, updated_txs] = await Promise.all([
     transactions.find({
       exchange_id: { $ne: null },
@@ -1205,6 +1205,45 @@ async function check_transactions_for_pending(req, res) {
   });
 
   await Promise.all(updatePromises);
+}
+
+const cancel_exchange = async (req, res) => {
+  try {
+    let address = req.address;
+
+    if (!address) {
+      return res.status(400).json({ error: "you are not logged in" });
+    }
+
+    let { exchangeId } = req.body;
+
+    if (!exchangeId || !ObjectId.isValid(exchangeId)) {
+      return res.status(400).json({ error: "Invalid exchangeId" });
+    }
+
+    let exchangeIdAsObjectId = new ObjectId(exchangeId);
+
+    let { data } = await axios.post(
+      process.env.PAYMENT_API + "/v1/getExchangeInfo",
+      {
+        exchangeId: exchangeIdAsObjectId,
+      }
+    );
+
+    if (data?.exchange?.status === "pending") {
+      await transactions.updateOne(
+        { exchange_id: exchangeId },
+        { $set: { tx_status: "canceled" } }
+      );
+    }
+
+    return res.status(200).send({ success: true });
+  } catch (e) {
+    console.log(e);
+    return res
+      .status(500)
+      .send({ success: false, message: "internal server error" });
+  }
 }
 
 async function make_withdrawal(req, res) {
@@ -1827,4 +1866,5 @@ module.exports = {
   create_exchange_transaction,
   get_exchange_status,
   check_transactions_for_pending,
+  cancel_exchange,
 };
