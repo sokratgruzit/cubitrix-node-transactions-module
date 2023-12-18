@@ -1,5 +1,5 @@
 const main_helper = require("../helpers/index");
-const BigNumber = require('bignumber.js');
+const BigNumber = require("bignumber.js");
 const global_helper = require("../helpers/global_helper");
 const {
   transaction_types,
@@ -1089,14 +1089,14 @@ async function check_transactions_for_pending(req, res) {
       }
     );
 
-    let receiveAmount =
-      data?.exchange?.receiveAmount ?? data?.exchange?.sentAmount;
+    // let receiveAmount =
+    //   data?.exchange?.receiveAmount ?? data?.exchange?.sentAmount;
 
     if (data.exchange?.status === "success") {
-      let receivedTokenAddress = data?.exchange?.tokenAddress;
-      let receivedrpc = data?.exchange?.rpc;
-      let receivedrpc1 = data?.exchange?.rpc1;
-      let receivedisNative = data?.exchange?.isNative;
+      // let receivedTokenAddress = data?.exchange?.tokenAddress;
+      // let receivedrpc = data?.exchange?.rpc;
+      // let receivedrpc1 = data?.exchange?.rpc1;
+      // let receivedisNative = data?.exchange?.isNative;
 
       await transactions.updateOne(
         { exchange_id: exchangeId },
@@ -1104,100 +1104,128 @@ async function check_transactions_for_pending(req, res) {
       );
 
       try {
-        const contract = new web3.eth.Contract(minABI, tokenAddress);
-        // let binance_rpcs_testnet = ["https://data-seed-prebsc-1-s1.binance.org:8545"];
-        let binance_rpcs = [
-          "https://bsc-dataseed.binance.org",
-          "https://binance.nodereal.io",
-        ];
-        let eth_rpcs = ["https://eth.meowrpc.com"];
-        let chain;
-
-        if (eth_rpcs.includes(receivedrpc) || eth_rpcs.includes(receivedrpc1)) {
-          chain = "eth";
-        } else if (
-          binance_rpcs.includes(receivedrpc) ||
-          binance_rpcs.includes(receivedrpc1)
-        ) {
-          chain = "bsc";
-        } else {
-          chain = "bsc-test";
-        }
-
-        if (!chain) {
-          return;
-        }
-
-        let receivedTotal = 0;
-
-        if (receivedisNative) {
-          if (chain == "bsc") {
-            receivedTotal = ratesObj.bnb.usd * receiveAmount;
-          } else if (chain == "eth") {
-            receivedTotal = ratesObj.eth.usd * receiveAmount;
-          } else {
-            receivedTotal = ratesObj.bnb.usd * receiveAmount;
-          }
-        } else {
-          if (chain == "eth") {
-            if (
-              receivedTokenAddress ==
-              "0xdAC17F958D2ee523a2206206994597C13D831ec7"
-            ) {
-              receivedTotal = ratesObj.usdt.usd * receiveAmount;
-            }
-            if (
-              receivedTokenAddress ==
-              "0xB8c77482e45F1F44dE1745F52C74426C631bDD52"
-            ) {
-              receivedTotal = ratesObj.bnb.usd * receiveAmount;
-            }
-          }
-        }
-
-        //let finalTokenCount = Math.abs(receivedTotal);
         let approved_tx = await transactions.findOne({
           exchange_id: exchangeId,
         });
+
         let finalTokenCount = Math.abs(approved_tx.tx_options.tokenCount);
 
-        const tokenAmountInWei = web3.utils.toWei(
-          finalTokenCount?.toString(),
-          "ether"
-        );
-        const transfer = contract.methods.transfer(tx?.from, tokenAmountInWei);
-        const encodedABI = transfer.encodeABI();
-
-        let txStats = {
-          from: treasuryAddress,
-          to: tokenAddress,
-          data: encodedABI,
-          value: 0,
-        };
-
-        const gasPrice = Number(await web3.eth.getGasPrice());
-        const gasLimit = await web3.eth.estimateGas(txStats);
-
-        txStats.gas = gasLimit;
-        txStats.gasPrice = gasPrice;
-
-        const trans = await web3.eth.accounts.signTransaction(
-          txStats,
-          process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
-          (err, signed) => {
-            if (err) {
-              console.log(err);
-            } else {
-              web3.eth
-                .sendSignedTransaction(signed.rawTransaction)
-                .on("error", (e) => {
-                  console.log("Purchase error: ", e);
-                });
-            }
-          }
+        let transaction = await accounts.findOneAndUpdate(
+          { account_owner: approved_tx.from, account_category: "main" },
+          { $inc: { balance: finalTokenCount } },
+          { new: true }
         );
 
-        return trans;
+        return transaction;
+        // const contract = new web3.eth.Contract(minABI, tokenAddress);
+        // // let binance_rpcs_testnet = ["https://data-seed-prebsc-1-s1.binance.org:8545"];
+        // let binance_rpcs = [
+        //   "https://bsc-dataseed.binance.org",
+        //   "https://binance.nodereal.io",
+        // ];
+        // let eth_rpcs = ["https://eth.meowrpc.com"];
+        // let chain;
+
+        // if (eth_rpcs.includes(receivedrpc) || eth_rpcs.includes(receivedrpc1)) {
+        //   chain = "eth";
+        // } else if (
+        //   binance_rpcs.includes(receivedrpc) ||
+        //   binance_rpcs.includes(receivedrpc1)
+        // ) {
+        //   chain = "bsc";
+        // } else {
+        //   chain = "bsc-test";
+        // }
+
+        // if (!chain) {
+        //   return;
+        // }
+
+        // let receivedTotal = 0;
+
+        // if (receivedisNative) {
+        //   if (chain == "bsc") {
+        //     receivedTotal = ratesObj.bnb.usd * receiveAmount;
+        //   } else if (chain == "eth") {
+        //     receivedTotal = ratesObj.eth.usd * receiveAmount;
+        //   } else {
+        //     receivedTotal = ratesObj.bnb.usd * receiveAmount;
+        //   }
+        // } else {
+        //   if (chain == "eth") {
+        //     if (
+        //       receivedTokenAddress ==
+        //       "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+        //     ) {
+        //       receivedTotal = ratesObj.usdt.usd * receiveAmount;
+        //     }
+        //     if (
+        //       receivedTokenAddress ==
+        //       "0xB8c77482e45F1F44dE1745F52C74426C631bDD52"
+        //     ) {
+        //       receivedTotal = ratesObj.bnb.usd * receiveAmount;
+        //     }
+        //   }
+        // }
+
+        // //let finalTokenCount = Math.abs(receivedTotal);
+        // let approved_tx = await transactions.findOne({
+        //   exchange_id: exchangeId,
+        // });
+
+        // let finalTokenCount = Math.abs(approved_tx.tx_options.tokenCount);
+
+        // const tokenAmountInWei = web3.utils.toWei(
+        //   finalTokenCount?.toString(),
+        //   "ether"
+        // );
+
+        // const transfer = contract.methods.transfer(tx?.from, tokenAmountInWei);
+        // const encodedABI = transfer.encodeABI();
+
+        // let txStats = {
+        //   from: treasuryAddress,
+        //   to: tokenAddress,
+        //   data: encodedABI,
+        //   value: 0,
+        // };
+
+        // const gasPrice = Number(await web3.eth.getGasPrice());
+        // const gasLimit = await web3.eth.estimateGas(txStats);
+
+        // txStats.gas = gasLimit;
+        // txStats.gasPrice = gasPrice;
+
+        // const trans = await web3.eth.accounts.signTransaction(
+        //   txStats,
+        //   process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
+        //   (err, signed) => {
+        //     if (err) {
+        //       console.log(err);
+        //     } else {
+        //       web3.eth
+        //       .sendSignedTransaction(signed.rawTransaction)
+        //       .on('confirmation', async (confirmationNumber, receipt) => {
+        //         console.log('Confirmation number:', confirmationNumber);
+
+        //         // If you want to perform an action after a specific number of confirmations
+        //         const desiredConfirmations = 3;
+
+        //         if (confirmationNumber >= desiredConfirmations) {
+        //           const transactionHash = receipt.transactionHash;
+        //           await web3.eth.getTransaction(transactionHash)
+        //           // You can also stop listening to further confirmations if needed
+        //           this.off('confirmation');
+        //         }
+        //       })
+        //       .on("error", (e) => {
+        //         console.log("Purchase error: ", e);
+        //       });
+        //     }
+        //   }
+        // );
+
+        // return trans;
       } catch (e) {
         console.log(e);
       }
@@ -1256,6 +1284,7 @@ async function make_withdrawal(req, res) {
   }
 
   amount = parseFloat(amount);
+
   try {
     let [mainAccount, treasury, ratesObj] = await Promise.all([
       accounts.findOne({
@@ -1478,12 +1507,12 @@ async function direct_deposit(req, res) {
       tx.to.toLowerCase() === tokenAddress.toLowerCase() &&
       functionSignature === "0xa9059cbb"
     ) {
-        // const numberOfTokens = decodedParameters["1"];
-        const numberOfTokens = new BigNumber(decodedParameters["1"]);
-        const precision = new BigNumber('10').pow(18);
-        const tokenAmount = numberOfTokens.dividedBy(precision).toString();
-        
-        const [updatedAccount] = await Promise.all([
+      // const numberOfTokens = decodedParameters["1"];
+      const numberOfTokens = new BigNumber(decodedParameters["1"]);
+      const precision = new BigNumber("10").pow(18);
+      const tokenAmount = numberOfTokens.dividedBy(precision).toString();
+
+      const [updatedAccount] = await Promise.all([
         accounts.findOneAndUpdate(
           { account_owner: address, account_category: "main" },
           { $inc: { balance: tokenAmount } },
@@ -1728,15 +1757,27 @@ async function exchange(req, res) {
   }
 }
 
-async function stakeCurrency(req, res) {
-  try {
-    let addr = req.address;
-    let { amount, currency, percentage = 0, duration } = req.body;
+// Assuming duration is in days and percentage is in percentage form
+const calculateExpectedReward = (amount, percentage, duration) => {
+  const annualPercentageYield = percentage / 100;
+  const dailyInterestRate = Math.pow(1 + annualPercentageYield, 1 / 365) - 1;
+  const expectedReward =
+    amount * Math.pow(1 + dailyInterestRate, parseFloat(duration)) - amount;
+  return expectedReward;
+};
 
+async function stakeCurrency(req, res) {
+  // Extract necessary data from the request
+  let addr = req.address;
+  let { amount, currency, percentage, duration } = req.body;
+
+  try {
+    // Check if address is provided
     if (!addr) {
       return main_helper.error_response(res, "You are not logged in");
     }
 
+    // Check if amount and currency are provided
     if (!amount || !currency) {
       return main_helper.error_response(
         res,
@@ -1744,9 +1785,11 @@ async function stakeCurrency(req, res) {
       );
     }
 
+    // Convert address to lowercase and amount to number
     const address = addr.toLowerCase();
     amount = Number(amount);
 
+    // Fetch main account and rates
     const [mainAccount, ratesObj] = await Promise.all([
       accounts.findOne({
         account_owner: address,
@@ -1755,46 +1798,64 @@ async function stakeCurrency(req, res) {
       rates.findOne(),
     ]);
 
+    // Check if main account exists
     if (!mainAccount) {
       return main_helper.error_response(res, "account not found");
     }
 
-    if (mainAccount.assets[currency] < amount) {
+    // Check if account has sufficient balance
+    if (mainAccount.assets[currency] <= amount) {
       return main_helper.error_response(res, "insufficient balance");
     }
 
-    let expires;
-    if (duration === "360 D") {
-      expires = Date.now() + 360 * 24 * 60 * 60 * 1000;
-    } else if (duration === "180 D") {
-      expires = Date.now() + 180 * 24 * 60 * 60 * 1000;
-    } else if (duration === "90 D") {
-      expires = Date.now() + 90 * 24 * 60 * 60 * 1000;
-    } else if (duration === "30 D") {
-      expires = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    // Calculate expiry date based on duration
+    let unstake_time;
+    switch (duration) {
+      case "360 D":
+        unstake_time = Date.parse(
+          new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
+        );
+        break;
+      case "180 D":
+        unstake_time = Date.parse(
+          new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString()
+        );
+        break;
+      case "90 D":
+        unstake_time = Date.parse(
+          new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString()
+        );
+        break;
+      case "30 D":
+        unstake_time = Date.parse(
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        );
+        break;
     }
 
-    const updateAccountPromise = accounts.findOneAndUpdate(
-      { account_owner: address, account_category: "main" },
-      {
-        $inc: {
-          [`assets.${currency}Staked`]: amount,
-          [`assets.${currency}`]: -amount,
-        },
-      },
-      { new: true }
+    // Calculate expected reward
+    const expected_reward = calculateExpectedReward(
+      amount,
+      percentage,
+      duration
     );
 
+    // Create stake
     const createStakePromise = currencyStakes.create({
       address,
       amount: amount,
+      expected_reward,
       currency,
       percentage,
-      expires,
+      unstake_time,
     });
+
+    // Generate and format transaction hash
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
-    const createTransactionPromice = transactions.create({
+
+    // Create transaction
+    const createTransactionPromise = transactions.create({
       from: address,
       to: address,
       amount: amount,
@@ -1807,21 +1868,40 @@ async function stakeCurrency(req, res) {
       tx_currency: "currency",
       tx_options: {
         amount: amount,
-        currency,
+        toAccType: currency,
         percentage,
-        expires,
+        unstake_time,
       },
       A1_price: ratesObj?.atr?.usd ?? 2,
     });
 
-    const [updatedAccount, createdStake, createTransaction] = await Promise.all(
-      [updateAccountPromise, createStakePromise, createTransactionPromice]
+    // Wait for stake creation to complete
+    const [createdStake] = await Promise.all([createStakePromise]);
+
+    // Update account
+    const updateAccountPromise = accounts.findOneAndUpdate(
+      { account_owner: address, account_category: "main" },
+      {
+        $inc: {
+          [`assets.${currency}Staked`]: +amount,
+          [`assets.${currency}`]: -amount,
+        },
+      },
+      { new: true }
     );
 
+    // Wait for account update and transaction creation to complete
+    const [updatedAccount] = await Promise.all([
+      updateAccountPromise,
+      createTransactionPromise,
+    ]);
+
+    // Check if stake was created successfully
     if (!createdStake) {
       return main_helper.error_response(res, "error staking currency");
     }
 
+    // Return success response with updated account
     return main_helper.success_response(res, updatedAccount);
   } catch (e) {
     console.log(e, "error staking currency");
@@ -1846,6 +1926,87 @@ async function get_currency_stakes(req, res) {
   }
 }
 
+async function get_currency_stakes_by_status(req, res) {
+  try {
+    const { status, address } = req.body;
+
+    if (!address) {
+      if (status === "unpaid") {
+        const stakes = await currencyStakes.find({ status: "unpaid" });
+        return main_helper.success_response(res, stakes);
+      }
+      if (status === "paid") {
+        const stakes = await currencyStakes.find({ status: "paid" });
+        return main_helper.success_response(res, stakes);
+      } else {
+        const stakes = await currencyStakes.find({});
+        return main_helper.success_response(res, stakes);
+      }
+    } else {
+      const addr = address.toLowerCase();
+
+      const stakes = await currencyStakes.find({ address: addr });
+      return main_helper.success_response(res, stakes);
+    }
+  } catch (e) {
+    console.log(e);
+    return main_helper.error_response(res, "error getting currency stakes");
+  }
+}
+
+async function give_rewards(req, res) {
+  let { currency_stakes_id } = req.body;
+
+  try {
+    // Find the currency stake and check its status
+    const existingStakes = await currencyStakes.findById(currency_stakes_id);
+
+    // Check if the currency stake was not found
+    if (!existingStakes) {
+      return main_helper.error_response(res, "Currency stake not found");
+    }
+
+    // Check if the status is already "paid"
+    if (existingStakes.status === "paid") {
+      return main_helper.error_response(res, "Currency stake already paid");
+    }
+
+    // Update the status of the currency stake
+    const updateStakes = await currencyStakes.findOneAndUpdate(
+      { _id: currency_stakes_id },
+      { status: "paid" },
+      { returnDocument: "after" }
+    );
+
+    const { expected_reward, currency, amount } = existingStakes;
+
+    const query = { account_owner: updateStakes?.address };
+    const update = {
+      $inc: {
+        [`assets.${currency}`]: +(expected_reward + amount),
+        [`assets.${currency}Staked`]: -amount,
+      },
+    };
+
+    // Update the user's account
+    const updateUserAccount = await accounts.findOneAndUpdate(query, update, {
+      returnDocument: "after",
+    });
+
+    // Respond with success and data
+    return main_helper.success_response(res, {
+      updateUserAccount,
+      updateStakes,
+    });
+  } catch (e) {
+    console.error(e);
+    return main_helper.error_response(
+      res,
+      `Error giving rewards: ${e.message}`
+    );
+  }
+}
+
 module.exports = {
   create_deposit_transaction,
   pending_deposit_transaction,
@@ -1862,6 +2023,8 @@ module.exports = {
   make_withdrawal,
   stakeCurrency,
   get_currency_stakes,
+  get_currency_stakes_by_status,
+  give_rewards,
   verify_external_transaction,
   create_exchange_transaction,
   get_exchange_status,
