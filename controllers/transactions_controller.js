@@ -1465,7 +1465,6 @@ async function direct_deposit(req, res) {
 
     let address = req.address;
 
-
     if (!address || !hash) {
       return res.status(400).json({error: "you are not logged in or not hash"});
     }
@@ -1972,18 +1971,17 @@ async function give_rewards(req, res) {
 
     const {expected_reward, currency, amount} = existingStakes;
 
-    const query = {account_owner: updateStakes?.address};
-    const update = {
-      $inc: {
-        [`assets.${currency}`]: +(expected_reward + amount),
-        [`assets.${currency}Staked`]: -amount,
-      },
-    };
-
     // Update the user's account
-    const updateUserAccount = await accounts.findOneAndUpdate(query, update, {
-      returnDocument: "after",
-    });
+    const updateUserAccount = await accounts.findOneAndUpdate(
+      {account_owner: updateStakes?.address},
+      {
+        $inc: {
+          [`assets.${currency}`]: +(expected_reward + amount),
+          [`assets.${currency}Staked`]: -amount,
+        },
+      },
+      {new: true}
+    );
 
     // Respond with success and data
     return main_helper.success_response(res, {
