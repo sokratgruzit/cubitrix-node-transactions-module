@@ -1465,8 +1465,9 @@ async function direct_deposit(req, res) {
 
     let address = req.address;
 
-    if (!address) {
-      return res.status(400).json({error: "you are not logged in"});
+
+    if (!address || !hash) {
+      return res.status(400).json({error: "you are not logged in or not hash"});
     }
 
     let tx_hash_generated = global_helper.make_hash();
@@ -1692,12 +1693,12 @@ async function exchange(req, res) {
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
     let query = null;
-    if (fromAccType === "A1") {
+    if (fromAccType === "ATAR") {
       query = accounts.findOneAndUpdate(
         {account_owner: address, account_category: "main"},
         {$inc: {balance: 0 - fromAmount, [`assets.${toAccType}`]: toAmount}}
       );
-    } else if (toAccType === "A1") {
+    } else if (toAccType === "ATAR") {
       query = accounts.findOneAndUpdate(
         {account_owner: address, account_category: "main"},
         {
