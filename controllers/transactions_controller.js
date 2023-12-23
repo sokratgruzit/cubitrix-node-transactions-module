@@ -410,7 +410,6 @@ async function make_transfer(req, res) {
       let tx_options = {
         account_category_to,
         account_category_from,
-        currency,
       };
       if (to !== from) {
         const verificationCode = global_helper.make_hash(6);
