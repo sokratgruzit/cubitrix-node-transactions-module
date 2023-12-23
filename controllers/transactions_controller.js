@@ -961,7 +961,7 @@ async function coinbase_webhooks(req, res) {
     console.log(e);
     return res
       .status(500)
-      .send({ success: false, message: "internal server error" });
+      .send({ success: false, message: "Internal server error" });
   }
 }
 
@@ -1025,7 +1025,7 @@ async function create_exchange_transaction(req, res) {
     console.log(e);
     return res
       .status(500)
-      .send({ success: false, message: "internal server error" });
+      .send({ success: false, message: "Internal server error" });
   }
 }
 
@@ -1057,7 +1057,7 @@ async function get_exchange_status(req, res) {
     console.log(e);
     return res
       .status(500)
-      .send({ success: false, message: "internal server error" });
+      .send({ success: false, message: "Internal server error" });
   }
 }
 
@@ -1270,7 +1270,7 @@ const cancel_exchange = async (req, res) => {
     console.log(e);
     return res
       .status(500)
-      .send({ success: false, message: "internal server error" });
+      .send({ success: false, message: "Internal server error" });
   }
 }
 
@@ -1464,7 +1464,7 @@ async function make_withdrawal(req, res) {
     console.log(e, "make_withdrawal");
     return res
       .status(500)
-      .send({ success: false, message: "internal server error" });
+      .send({ success: false, message: "Internal server error" });
   }
 }
 
@@ -1753,7 +1753,7 @@ async function exchange(req, res) {
     console.log(e, "exchange");
     return res
       .status(500)
-      .send({ success: false, message: "internal server error" });
+      .send({ success: false, message: "Internal server error" });
   }
 }
 
