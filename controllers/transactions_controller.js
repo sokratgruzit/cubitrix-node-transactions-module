@@ -410,6 +410,7 @@ async function make_transfer(req, res) {
       let tx_options = {
         account_category_to,
         account_category_from,
+        currency,
       };
       if (to !== from) {
         const verificationCode = global_helper.make_hash(6);
@@ -1972,7 +1973,7 @@ async function give_rewards(req, res) {
     const {expected_reward, currency, amount} = existingStakes;
 
     // Update the user's account
-    const updateUserAccount = await accounts.findOneAndUpdate(
+    const updateUserAccount = accounts.findOneAndUpdate(
       {account_owner: updateStakes?.address},
       {
         $inc: {
@@ -1983,9 +1984,11 @@ async function give_rewards(req, res) {
       {new: true}
     );
 
+    const [updatedAccount] = await Promise.all([updateUserAccount]);
+
     // Respond with success and data
     return main_helper.success_response(res, {
-      updateUserAccount,
+      updatedAccount,
       updateStakes,
     });
   } catch (e) {
