@@ -1970,14 +1970,15 @@ async function give_rewards(req, res) {
     );
 
     const {expected_reward, currency, amount} = existingStakes;
+    console.log(existingStakes, "ex");
 
     // Update the user's account
     const updateUserAccount = accounts.findOneAndUpdate(
       {account_owner: updateStakes?.address},
       {
         $inc: {
-          [`assets.${currency}`]: +(expected_reward + amount),
-          [`assets.${currency}Staked`]: -amount,
+          [`assets.${currency}`]: +(Number(expected_reward) + Number(amount)),
+          [`assets.${currency}Staked`]: -Number(amount),
         },
       },
       {new: true}
