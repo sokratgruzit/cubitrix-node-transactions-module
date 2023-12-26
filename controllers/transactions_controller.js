@@ -1063,7 +1063,6 @@ async function get_exchange_status(req, res) {
 
 async function check_transactions_for_pending(io) {
   const hourAgo = new Date(Date.now() - 5 * 60 * 1000);
-  console.log(io);
   const [get_txs, ratesObj, updated_txs] = await Promise.all([
     transactions.find({
       exchange_id: { $ne: null },
@@ -1108,7 +1107,6 @@ async function check_transactions_for_pending(io) {
         exchangeId: exchangeId,
         status: "approved",
       });
-      console.log(io);
 
       try {
         let approved_tx = await transactions.findOne({
