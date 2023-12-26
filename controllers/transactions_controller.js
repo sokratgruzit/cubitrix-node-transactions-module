@@ -1061,8 +1061,9 @@ async function get_exchange_status(req, res) {
   }
 }
 
-async function check_transactions_for_pending(req, res) {
+async function check_transactions_for_pending(io) {
   const hourAgo = new Date(Date.now() - 5 * 60 * 1000);
+  console.log(io);
   const [get_txs, ratesObj, updated_txs] = await Promise.all([
     transactions.find({
       exchange_id: { $ne: null },
@@ -1102,6 +1103,12 @@ async function check_transactions_for_pending(req, res) {
         { exchange_id: exchangeId },
         { $set: { tx_status: "approved" } }
       );
+
+      io.emit("exchange_status", {
+        exchangeId: exchangeId,
+        status: "approved",
+      });
+      console.log(io);
 
       try {
         let approved_tx = await transactions.findOne({
@@ -1272,7 +1279,7 @@ const cancel_exchange = async (req, res) => {
       .status(500)
       .send({ success: false, message: "Internal server error" });
   }
-}
+};
 
 async function make_withdrawal(req, res) {
   let { address_to, amount, accountType, rate } = req.body;
@@ -1474,8 +1481,10 @@ async function direct_deposit(req, res) {
 
     let address = req.address;
 
-    if (!address) {
-      return res.status(400).json({ error: "you are not logged in" });
+    if (!address || !hash) {
+      return res
+        .status(400)
+        .json({ error: "you are not logged in or not hash" });
     }
 
     let tx_hash_generated = global_helper.make_hash();
@@ -1979,23 +1988,25 @@ async function give_rewards(req, res) {
     );
 
     const { expected_reward, currency, amount } = existingStakes;
-
-    const query = { account_owner: updateStakes?.address };
-    const update = {
-      $inc: {
-        [`assets.${currency}`]: +(expected_reward + amount),
-        [`assets.${currency}Staked`]: -amount,
-      },
-    };
+    console.log(existingStakes, "ex");
 
     // Update the user's account
-    const updateUserAccount = await accounts.findOneAndUpdate(query, update, {
-      returnDocument: "after",
-    });
+    const updateUserAccount = accounts.findOneAndUpdate(
+      { account_owner: updateStakes?.address },
+      {
+        $inc: {
+          [`assets.${currency}`]: +(Number(expected_reward) + Number(amount)),
+          [`assets.${currency}Staked`]: -Number(amount),
+        },
+      },
+      { new: true }
+    );
+
+    const [updatedAccount] = await Promise.all([updateUserAccount]);
 
     // Respond with success and data
     return main_helper.success_response(res, {
-      updateUserAccount,
+      updatedAccount,
       updateStakes,
     });
   } catch (e) {
