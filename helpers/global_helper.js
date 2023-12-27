@@ -74,13 +74,13 @@ async function get_account_by_address(address) {
   }
 }
 
-async function send_verification_mail(email, verification_code) {
+async function send_verification_mail(email, verification_code, userName) {
   try {
     var mailOptions = {
       from: process.env.SENDER_EMAIL,
       to: email,
-      subject: "Verify your transaction",
-      html: transaction_verification_template(verification_code),
+      subject: "Transaction Verification at A1",
+      html: transaction_verification_template(verification_code, userName),
     };
 
     await transporter.sendMail(mailOptions);
@@ -91,7 +91,7 @@ async function send_verification_mail(email, verification_code) {
   }
 }
 
-function transaction_verification_template(verification_code) {
+function transaction_verification_template(verification_code, userName) {
   return `
   <!DOCTYPE html>
   <html>
@@ -112,8 +112,10 @@ function transaction_verification_template(verification_code) {
     <table align="center" width="600" cellpadding="0" cellspacing="0" style="background-color: #fff; border-collapse: collapse;">
       <tr>
         <td style="padding: 20px;">
-          <h1 style="text-align:center;">Transaction Verification at ${process.env.COMPANY_NAME}</h1>
-          <p>Thanks for initiating a transfer. To complete your transaction, please enter the verification code below:</p>
+          <h2 style="text-align:center;">Dear ${userName}</h2>
+          <p>Thanks for initiating a transfer. To complete your transaction, please enter the verification code
+          below:
+          </p>
           <table align="center" style="margin: 20px auto;">
             <tr>
               <td class="highlighted-box">
@@ -122,12 +124,15 @@ function transaction_verification_template(verification_code) {
             </tr>
             <tr>
               <td style="text-align: center;">
-                Copy the code above.
+              Please copy and use the above code to complete your transaction securely.
               </td>
             </tr>
           </table>
-          <p>If you encounter any issues or did not initiate this transfer, please contact us immediately at <a href="mailto:${process.env.COMPANY_EMAIL}">${process.env.COMPANY_EMAIL}</a></p>
-          <p><b>If you did not initiate this transaction, please disregard this email and contact our support. We apologize for any inconvenience this may have caused.</b></p>
+          <p>If you encounter any issues or did not initiate this transfer, please contact us immediately. <a href="mailto:${process.env.COMPANY_EMAIL}">${process.env.COMPANY_EMAIL}</a></p>
+          <p><b>If you did not initiate this transaction, please disregard this email and contact our support. We
+          apologize for any inconvenience this may have caused.</b></p>
+          <p>Best Regards,<p>
+          <p>A1 Gold Team<p>
         </td>
       </tr>
     </table>
