@@ -1103,8 +1103,8 @@ async function check_transactions_for_pending(io) {
         { $set: { tx_status: "approved" } }
       );
 
-      io.emit("exchange_status", {
-        exchangeId: exchangeId,
+      io.to(exchangeId).emit("exchange_status", {
+        exchangeId,
         status: "approved",
       });
 
