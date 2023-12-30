@@ -380,10 +380,12 @@ async function make_transfer(req, res) {
         account_category_to,
         currency,
       };
+      
       const verificationCode = global_helper.make_hash(6);
       const emailStatus = await global_helper.send_verification_mail(
         metaAccount?.email,
-        verificationCode
+        verificationCode,
+        metaAccount?.name
       );
       await verify_txs.create({
         from,
@@ -415,7 +417,8 @@ async function make_transfer(req, res) {
         const verificationCode = global_helper.make_hash(6);
         const emailStatus = await global_helper.send_verification_mail(
           metaAccount?.email,
-          verificationCode
+          verificationCode,
+          metaAccount?.name
         );
 
         await verify_txs.create({
@@ -1063,7 +1066,6 @@ async function get_exchange_status(req, res) {
 
 async function check_transactions_for_pending(io) {
   const hourAgo = new Date(Date.now() - 5 * 60 * 1000);
-  console.log(io);
   const [get_txs, ratesObj, updated_txs] = await Promise.all([
     transactions.find({
       exchange_id: { $ne: null },
@@ -1104,11 +1106,10 @@ async function check_transactions_for_pending(io) {
         { $set: { tx_status: "approved" } }
       );
 
-      io.emit("exchange_status", {
-        exchangeId: exchangeId,
+      io.to(exchangeId).emit("exchange_status", {
+        exchangeId,
         status: "approved",
       });
-      console.log(io);
 
       try {
         let approved_tx = await transactions.findOne({
