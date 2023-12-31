@@ -11,17 +11,11 @@ const {
   check_transactions_for_pending,
 } = require("./controllers/transactions_controller");
 const app = express();
-const CryptoJS = require("crypto-js");
+const decryptEnv = require("./utils/decryptEnv");
 
-const SECRET_KEY = process.env.SECRET_KEY;
 const MONGO_URL = process.env.MONGO_URL;
 
-function decrypt(ciphertext, secretKey) {
-  const bytes = CryptoJS.AES.decrypt(ciphertext, secretKey);
-  const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-  return decryptedText;
-}
-const mongoUrl = decrypt(MONGO_URL, SECRET_KEY);
+const mongoUrl = decryptEnv(MONGO_URL);
 
 app.use(
   express.json({

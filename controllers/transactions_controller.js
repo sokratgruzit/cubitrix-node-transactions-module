@@ -30,9 +30,8 @@ const {decode} = require("jsonwebtoken");
 
 const {ObjectId} = require("mongodb");
 
-const CryptoJS = require("crypto-js");
+const decryptEnv = require("../utils/decryptEnv");
 
-const SECRET_KEY = process.env.SECRET_KEY;
 const COINBASE_API_KEY = process.env.COINBASE_API_KEY;
 const COINBASE_WEBHOOK_SECRET = process.env.COINBASE_WEBHOOK_SECRET;
 const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS;
@@ -41,19 +40,13 @@ const TOKEN_HOLDER_TREASURY_ADDRESS = process.env.TOKEN_HOLDER_TREASURY_ADDRESS;
 const TOKEN_HOLDER_TREASURY_PRIVATE_KEY =
   process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY;
 
-function decrypt(ciphertext, secretKey) {
-  const bytes = CryptoJS.AES.decrypt(ciphertext, secretKey);
-  const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-  return decryptedText;
-}
-const coinbaseApiKey = decrypt(COINBASE_API_KEY, SECRET_KEY);
-const coinbaseWebhookSecret = decrypt(COINBASE_WEBHOOK_SECRET, SECRET_KEY);
-const tokenAddress = decrypt(TOKEN_ADDRESS, SECRET_KEY);
-const stakingContractAddress = decrypt(STAKING_CONTRACT_ADDRESS, SECRET_KEY);
-const treasuryAddress = decrypt(TOKEN_HOLDER_TREASURY_ADDRESS, SECRET_KEY);
-const tokenHolderTreasuryPrivateKey = decrypt(
-  TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
-  SECRET_KEY
+const coinbaseApiKey = decryptEnv(COINBASE_API_KEY);
+const coinbaseWebhookSecret = decryptEnv(COINBASE_WEBHOOK_SECRET);
+const treasuryAddress = decryptEnv(TOKEN_HOLDER_TREASURY_ADDRESS);
+const tokenAddress = decryptEnv(TOKEN_ADDRESS);
+const stakingContractAddress = decryptEnv(STAKING_CONTRACT_ADDRESS);
+const tokenHolderTreasuryPrivateKey = decryptEnv(
+  TOKEN_HOLDER_TREASURY_PRIVATE_KEY
 );
 
 const web3 = new Web3(process.env.WEB3_PROVIDER_URL);
