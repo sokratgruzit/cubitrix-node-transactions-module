@@ -1094,6 +1094,7 @@ async function check_transactions_for_pending(io) {
 
     // let receiveAmount =
     //   data?.exchange?.receiveAmount ?? data?.exchange?.sentAmount;
+    console.log(data.exchange?.status, "status");
 
     if (data.exchange?.status === "success") {
       // let receivedTokenAddress = data?.exchange?.tokenAddress;
@@ -1125,6 +1126,8 @@ async function check_transactions_for_pending(io) {
           { $inc: { balance: finalTokenCount } },
           { new: true }
         );
+
+        console.log(transaction, "transaction");
 
         return transaction;
         // const contract = new web3.eth.Contract(minABI, tokenAddress);
