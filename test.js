@@ -1,14 +1,21 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const { rates } = require("@cubitrix/models");
+const {rates} = require("@cubitrix/models");
 const axios = require("axios");
 const transactions = require("./routes/transactions");
 const Web3 = require("web3");
 const minABI = require("./abi/WBNB.json");
 const cors = require("cors");
 const cors_options = require("./config/cors_options");
-const { check_transactions_for_pending } = require("./controllers/transactions_controller");
+const {
+  check_transactions_for_pending,
+} = require("./controllers/transactions_controller");
 const app = express();
+const decryptEnv = require("./utils/decryptEnv");
+
+const MONGO_URL = process.env.MONGO_URL;
+
+const mongoUrl = decryptEnv(MONGO_URL);
 
 app.use(
   express.json({
@@ -19,7 +26,7 @@ app.use(
         req.rawBody = buf.toString();
       }
     },
-  }),
+  })
 );
 require("dotenv").config();
 
@@ -39,7 +46,7 @@ app.use("/api/transactions", transactions);
 //   let ratesObj = await rates.findOne();
 
 //   let receiveAmount = data?.exchange?.receiveAmount ?? data?.exchange?.sentAmount;
-  
+
 //   if (data.exchange?.status === "success") {
 //     let receivedTokenAddress = data?.exchange?.tokenAddress;
 //     let receivedrpc = data?.exchange?.rpc;
@@ -55,7 +62,7 @@ app.use("/api/transactions", transactions);
 //       ];
 //       let eth_rpcs = ["https://eth.meowrpc.com"];
 //       let chain;
-      
+
 //       if (eth_rpcs.includes(receivedrpc) || eth_rpcs.includes(receivedrpc1)) {
 //         chain = "eth";
 //       } else if (binance_rpcs.includes(receivedrpc) || binance_rpcs.includes(receivedrpc1)) {
@@ -63,7 +70,7 @@ app.use("/api/transactions", transactions);
 //       } else {
 //         chain = "bsc-test";
 //       }
-      
+
 //       if (!chain) {
 //         return;
 //       }
@@ -87,27 +94,27 @@ app.use("/api/transactions", transactions);
 //           }
 //         }
 //       }
-      
+
 //       let finalTokenCount = (receivedTotal - 1) / ratesObj.atr.usd;
 //       const tokenAmountInWei = web3.utils.toWei(finalTokenCount?.toString(), "ether");
 //       const transfer = contract.methods.transfer("0x677dD459bEF0F585ffB17734e8f1968ff4805a39", tokenAmountInWei);
 //       const encodedABI = transfer.encodeABI();
-      
+
 //       let txStats = {
 //         from: treasuryAddress,
 //         to: tokenAddress,
 //         data: encodedABI,
 //         value: 0
 //       };
-      
+
 //       const gasPrice = Number(await web3.eth.getGasPrice());
 //       const gasLimit = await web3.eth.estimateGas(txStats);
-      
+
 //       txStats.gas = gasLimit;
 //       txStats.gasPrice = gasPrice;
 
 //       console.log(txStats)
-      
+
 //       web3.eth.accounts.signTransaction(
 //         txStats,
 //         process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY,
@@ -123,7 +130,7 @@ app.use("/api/transactions", transactions);
 //         },
 //       );
 //     } catch (e) {
-      
+
 //     }
 //   }
 // }, 5000);
@@ -160,12 +167,14 @@ async function start() {
   try {
     mongoose.set("strictQuery", false);
 
-    await mongoose.connect(process.env.MONGO_URL, {
+    await mongoose.connect(mongoUrl, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
 
-    app.listen(PORT, () => console.log(`App has been started on port ${PORT}...`));
+    app.listen(PORT, () =>
+      console.log(`App has been started on port ${PORT}...`)
+    );
   } catch (e) {
     console.log(`Server Error ${e.message}`);
     process.exit(1);

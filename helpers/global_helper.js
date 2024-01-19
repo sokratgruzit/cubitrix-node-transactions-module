@@ -1,7 +1,12 @@
 const main_helper = require("../helpers/index");
 var Web3 = require("web3");
-const { options, accounts, account_meta } = require("@cubitrix/models");
-const { ObjectId } = require("mongodb");
+const {options, accounts, account_meta} = require("@cubitrix/models");
+const {ObjectId} = require("mongodb");
+const decryptEnv = require("../utils/decryptEnv");
+
+const SENDER_EMAIL_PASSWORD = process.env.SENDER_EMAIL_PASSWORD;
+
+const senderEmailPass = decryptEnv(SENDER_EMAIL_PASSWORD);
 
 var nodemailer = require("nodemailer");
 
@@ -9,13 +14,13 @@ var transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: process.env.SENDER_EMAIL,
-    pass: process.env.SENDER_EMAIL_PASSWORD,
+    pass: senderEmailPass,
   },
 });
 
 async function get_option_by_key(key) {
   try {
-    let option = await options.findOne({ key });
+    let option = await options.findOne({key});
     if (option) {
       return {
         success: true,
@@ -50,7 +55,8 @@ async function calculate_tx_fee(wei = 21000, currency = "ether") {
 
 function make_hash(length = 66) {
   let result = "";
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const charactersLength = characters.length;
   let counter = 0;
   while (counter < length) {
@@ -62,7 +68,7 @@ function make_hash(length = 66) {
 // get account type by name
 async function get_account_by_address(address) {
   try {
-    let account_address = await account_meta.findOne({ address: address }).exec();
+    let account_address = await account_meta.findOne({address: address}).exec();
 
     if (account_address) {
       let type_id = account_address._id;
