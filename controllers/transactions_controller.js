@@ -1855,7 +1855,7 @@ async function stakeCurrency(req, res) {
       tx_type: "currency stake",
       denomination: 0,
       tx_fee: 0,
-      tx_fee_currency: "atar",
+      tx_fee_currency: "AONE",
       tx_currency: "currency",
       tx_options: {
         amount: amount,
