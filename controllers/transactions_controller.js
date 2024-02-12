@@ -1296,7 +1296,7 @@ async function make_withdrawal(req, res) {
   let address = req.address;
 
   if (!address) {
-    return res.status(400).json({error: "you are not logged in"});
+    return res.status(400).json({error: "You are not logged in"});
   }
 
   amount = parseFloat(amount);
@@ -1314,11 +1314,11 @@ async function make_withdrawal(req, res) {
     if (!mainAccount)
       return res
         .status(400)
-        .json(main_helper.error_message("main account not found"));
+        .json(main_helper.error_message("Main account not found"));
     if (!mainAccount.active)
       return res
         .status(400)
-        .json(main_helper.error_message("main account is not active"));
+        .json(main_helper.error_message("Main account is not active"));
 
     if (accountType === "ATAR") {
       let tx_fee_value = await global_helper.calculate_tx_fee(null, "ATR");
@@ -1326,7 +1326,7 @@ async function make_withdrawal(req, res) {
       if (mainAccount.balance < amount) {
         return res
           .status(400)
-          .json(main_helper.error_message("insufficient funds"));
+          .json(main_helper.error_message("Insufficient funds"));
       }
 
       let balanceMinusFee = amount - tx_fee_value;
@@ -1371,6 +1371,7 @@ async function make_withdrawal(req, res) {
           },
         }),
       ]);
+
       const contract = new web3.eth.Contract(minABI, tokenAddress);
       const tokenAmountInWei = web3.utils.toWei(
         balanceMinusFee?.toString(),
@@ -1409,9 +1410,10 @@ async function make_withdrawal(req, res) {
           }
         }
       );
+      
       return res.status(200).json({
         success: true,
-        message: "successfull transaction",
+        message: "Successfull transaction",
         result: updatedMainAcc,
       });
     }
@@ -1419,7 +1421,7 @@ async function make_withdrawal(req, res) {
     if (mainAccount.assets[accountType] < amount) {
       return res
         .status(400)
-        .json(main_helper.error_message("insufficient funds"));
+        .json(main_helper.error_message("Insufficient funds"));
     }
 
     const currency = accountType?.toUpperCase();
