@@ -195,6 +195,7 @@ async function get_transactions_of_user(req, res) {
         data.tx_type = method_type;
       }
     }
+
     if (date_type != "all" && date_type != null) {
       const targetDate = new Date(date_type);
       targetDate.setUTCHours(0, 0, 0, 0); // Set time to the beginning of the target date
@@ -207,13 +208,24 @@ async function get_transactions_of_user(req, res) {
         $lt: nextDay,
       };
     }
+    
+    data.$and = [
+      { $or: [
+          { tx_type: { $ne: "bonus" } }, // Transactions where tx_type is not "bonus"
+          { from: { $ne: mainAccount.address } } // Transactions where from is equal to mainAccount.address
+        ]
+      }
+    ];
+
     result = await transactions
       .find(data)
       //.find({ to: mainAccount.address })
       .sort({ createdAt: "desc" })
       .limit(limit)
       .skip(limit * (req_page - 1));
+
     total_pages = await transactions.count(data);
+
     return res.status(200).send({
       transactions: result,
       total_pages: Math.ceil(total_pages / limit),
