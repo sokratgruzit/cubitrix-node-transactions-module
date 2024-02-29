@@ -26,9 +26,9 @@ const Web3 = require("web3");
 
 const minABI = require("../abi/WBNB.json");
 const STACK_ABI = require("../abi/stack.json");
-const { decode } = require("jsonwebtoken");
+const {decode} = require("jsonwebtoken");
 
-const { ObjectId } = require("mongodb");
+const {ObjectId} = require("mongodb");
 
 const decryptEnv = require("../utils/decryptEnv");
 
@@ -65,7 +65,7 @@ async function get_transactions_of_user(req, res) {
     if (!address) {
       return res
         .status(500)
-        .send({ success: false, message: "you are not logged in" });
+        .send({success: false, message: "you are not logged in"});
     }
 
     const mainAccount = await accounts.findOne({
@@ -87,7 +87,7 @@ async function get_transactions_of_user(req, res) {
           toCount: [
             {
               $match: {
-                to: { $in: addr_arr },
+                to: {$in: addr_arr},
                 tx_type: {
                   $in: ["deposit", "bonus", "transfer"],
                 },
@@ -96,15 +96,15 @@ async function get_transactions_of_user(req, res) {
             {
               $group: {
                 _id: null,
-                totalAmount: { $sum: "$amount" },
-                count: { $sum: 1 },
+                totalAmount: {$sum: "$amount"},
+                count: {$sum: 1},
               },
             },
           ],
           fromSum: [
             {
               $match: {
-                from: { $in: addr_arr },
+                from: {$in: addr_arr},
                 tx_type: {
                   $in: ["withdraw", "transfer"],
                 },
@@ -113,8 +113,8 @@ async function get_transactions_of_user(req, res) {
             {
               $group: {
                 _id: null,
-                totalAmount: { $sum: "$amount" },
-                count: { $sum: 1 },
+                totalAmount: {$sum: "$amount"},
+                count: {$sum: 1},
               },
             },
           ],
@@ -122,10 +122,10 @@ async function get_transactions_of_user(req, res) {
       },
       {
         $project: {
-          toCount: { $arrayElemAt: ["$toCount.count", 0] },
-          toSum: { $arrayElemAt: ["$toCount.totalAmount", 0] },
-          fromCount: { $arrayElemAt: ["$fromSum.count", 0] },
-          fromSum: { $arrayElemAt: ["$fromSum.totalAmount", 0] },
+          toCount: {$arrayElemAt: ["$toCount.count", 0]},
+          toSum: {$arrayElemAt: ["$toCount.totalAmount", 0]},
+          fromCount: {$arrayElemAt: ["$fromSum.count", 0]},
+          fromSum: {$arrayElemAt: ["$fromSum.totalAmount", 0]},
         },
       },
     ];
@@ -154,20 +154,20 @@ async function get_transactions_of_user(req, res) {
           to: {
             $in: addr_arr,
           },
-          tx_options: { $exists: true }, // Check if tx_options field exists
+          tx_options: {$exists: true}, // Check if tx_options field exists
           $or: [
-            { "tx_options.account_category_to": account_type },
-            { "tx_options.account_category_from": account_type },
+            {"tx_options.account_category_to": account_type},
+            {"tx_options.account_category_from": account_type},
           ],
         },
         {
           from: {
             $in: addr_arr,
           },
-          tx_options: { $exists: true }, // Check if tx_options field exists
+          tx_options: {$exists: true}, // Check if tx_options field exists
           $or: [
-            { "tx_options.account_category_to": account_type },
-            { "tx_options.account_category_from": account_type },
+            {"tx_options.account_category_to": account_type},
+            {"tx_options.account_category_from": account_type},
           ],
         },
       ];
@@ -190,7 +190,7 @@ async function get_transactions_of_user(req, res) {
           "referral_bonus_binary_level_10",
           "referral_bonus_binary_level_11",
         ];
-        data.tx_type = { $in: referral_types };
+        data.tx_type = {$in: referral_types};
       } else {
         data.tx_type = method_type;
       }
@@ -212,8 +212,8 @@ async function get_transactions_of_user(req, res) {
     data.$and = [
       {
         $or: [
-          { tx_type: { $ne: "bonus" } }, // Transactions where tx_type is not "bonus"
-          { from: { $ne: mainAccount.address } }, // Transactions where from is equal to mainAccount.address
+          {tx_type: {$ne: "bonus"}}, // Transactions where tx_type is not "bonus"
+          {from: {$ne: mainAccount.address}}, // Transactions where from is equal to mainAccount.address
         ],
       },
     ];
@@ -221,7 +221,7 @@ async function get_transactions_of_user(req, res) {
     result = await transactions
       .find(data)
       //.find({ to: mainAccount.address })
-      .sort({ createdAt: "desc" })
+      .sort({createdAt: "desc"})
       .limit(limit)
       .skip(limit * (req_page - 1));
 
@@ -235,7 +235,7 @@ async function get_transactions_of_user(req, res) {
     });
   } catch (e) {
     console.log(e.message);
-    return res.status(500).send({ success: false, message: e.message });
+    return res.status(500).send({success: false, message: e.message});
   }
 }
 
@@ -475,9 +475,9 @@ async function make_transfer(req, res) {
 
       const [updatedAcc, createdTransaction] = await Promise.all([
         accounts.findOneAndUpdate(
-          { account_owner: from, account_category: account_category_from },
-          { $inc: { balance: 0 - parseFloat(amount) } },
-          { new: true }
+          {account_owner: from, account_category: account_category_from},
+          {$inc: {balance: 0 - parseFloat(amount)}},
+          {new: true}
         ),
         transactions.create({
           from,
@@ -491,15 +491,15 @@ async function make_transfer(req, res) {
           tx_options,
         }),
         accounts.findOneAndUpdate(
-          { account_owner: to, account_category: account_category_to },
-          { $inc: { balance: amount } },
-          { new: true }
+          {account_owner: to, account_category: account_category_to},
+          {$inc: {balance: amount}},
+          {new: true}
         ),
       ]);
 
       return main_helper.success_response(res, {
         message: "successfull transaction",
-        data: { createdTransaction, updatedAcc },
+        data: {createdTransaction, updatedAcc},
       });
     } else {
       return main_helper.error_response(res, "Insufficient funds");
@@ -513,7 +513,7 @@ async function make_transfer(req, res) {
 async function verify_external_transaction(req, res) {
   try {
     let address = req.address;
-    const { code } = req.body;
+    const {code} = req.body;
 
     if (!address)
       return main_helper.error_response(res, "you are not logged in");
@@ -531,15 +531,8 @@ async function verify_external_transaction(req, res) {
     if (!verifiedTx)
       return main_helper.error_response(res, "Invalid verification code");
 
-    let {
-      to,
-      amount,
-      tx_options,
-      denomination,
-      tx_type,
-      tx_hash,
-      tx_currency,
-    } = verifiedTx;
+    let {to, amount, tx_options, denomination, tx_type, tx_hash, tx_currency} =
+      verifiedTx;
     let currency = tx_options?.currency;
 
     const queries = [
@@ -551,7 +544,7 @@ async function verify_external_transaction(req, res) {
         account_owner: address,
         account_category: tx_options?.account_category_from,
       }),
-      accounts.findOne({ account_owner: address, account_category: "main" }),
+      accounts.findOne({account_owner: address, account_category: "main"}),
       rates.findOne(),
     ];
 
@@ -595,8 +588,8 @@ async function verify_external_transaction(req, res) {
               account_owner: address,
               account_category: tx_options?.account_category_from,
             },
-            { $inc: decreaseBalance },
-            { new: true }
+            {$inc: decreaseBalance},
+            {new: true}
           ),
           transactions.create({
             from: address,
@@ -615,8 +608,8 @@ async function verify_external_transaction(req, res) {
               account_owner: to,
               account_category: tx_options?.account_category_to,
             },
-            { $inc: increaseBalance },
-            { new: true }
+            {$inc: increaseBalance},
+            {new: true}
           )
         );
       } else {
@@ -629,8 +622,8 @@ async function verify_external_transaction(req, res) {
             account_owner: address,
             account_category: tx_options?.account_category_from,
           },
-          { $inc: { balance: 0 - amountFloat } },
-          { new: true }
+          {$inc: {balance: 0 - amountFloat}},
+          {new: true}
         ),
         transactions.create({
           from: address,
@@ -649,8 +642,8 @@ async function verify_external_transaction(req, res) {
             account_owner: to,
             account_category: tx_options?.account_category_to,
           },
-          { $inc: { balance: amountFloat } },
-          { new: true }
+          {$inc: {balance: amountFloat}},
+          {new: true}
         )
       );
     } else {
@@ -661,11 +654,11 @@ async function verify_external_transaction(req, res) {
       operations
     );
 
-    await verify_txs.deleteOne({ _id: verifiedTx._id });
+    await verify_txs.deleteOne({_id: verifiedTx._id});
 
     return main_helper.success_response(res, {
       message: "successfull transaction",
-      data: { createdTransaction, updatedAcc, updatedAcc2 },
+      data: {createdTransaction, updatedAcc, updatedAcc2},
     });
   } catch (e) {
     console.log(e.message);
@@ -676,8 +669,8 @@ async function verify_external_transaction(req, res) {
 // Checking Max Bonus Amount For User Referral
 async function check_user_bonus_maximum(address, bonus_type) {
   let tx_amount = await transactions.aggregate([
-    { $match: { to: address, tx_type: bonus_type } },
-    { $group: { _id: null, amount: { $sum: "$amount" } } },
+    {$match: {to: address, tx_type: bonus_type}},
+    {$group: {_id: null, amount: {$sum: "$amount"}}},
   ]);
   if (tx_amount.length > 0) {
     return tx_amount[0].amount;
@@ -689,7 +682,7 @@ async function check_user_bonus_maximum(address, bonus_type) {
 // Get Transaction Type
 async function get_tx_type(tx_type) {
   try {
-    let type = await transaction_types.findOne({ name: tx_type }).exec();
+    let type = await transaction_types.findOne({name: tx_type}).exec();
     if (type) {
       return main_helper.return_data(true, type);
     }
@@ -708,14 +701,14 @@ async function pending_deposit_transaction(req, res) {
       return res
         .status(400)
         .json(main_helper.error_message("you are not logged in"));
-    let { amount, amountTransferedFrom, receivePaymentAddress, startDate } =
+    let {amount, amountTransferedFrom, receivePaymentAddress, startDate} =
       req.body;
 
     const tx_hash = global_helper.make_hash();
 
     let [account_main, ratesObj] = await Promise.all([
       accounts.findOne({
-        $or: [{ account_owner: from }, { address: from }],
+        $or: [{account_owner: from}, {address: from}],
         account_category: "main",
       }),
       rates.findOne(),
@@ -738,18 +731,18 @@ async function pending_deposit_transaction(req, res) {
       A1_price: ratesObj?.atr?.usd ?? 2,
     });
 
-    res.status(200).send({ success: true, transaction });
+    res.status(200).send({success: true, transaction});
   } catch (e) {
     return res
       .status(500)
-      .send({ success: false, message: "something went wrong" });
+      .send({success: false, message: "something went wrong"});
   }
 }
 
 // Create Coinbase Deposit Transaction
 async function coinbase_deposit_transaction(req, res) {
   try {
-    let { amount } = req.body;
+    let {amount} = req.body;
     let from = req.address;
     if (!from) {
       return res
@@ -760,7 +753,7 @@ async function coinbase_deposit_transaction(req, res) {
 
     let [account_main, ratesObj] = await Promise.all([
       accounts.findOne({
-        $or: [{ account_owner: from }, { address: from }],
+        $or: [{account_owner: from}, {address: from}],
         account_category: "main",
       }),
       rates.findOne(),
@@ -821,24 +814,22 @@ async function coinbase_deposit_transaction(req, res) {
           exchange_rates: charge.exchange_rates,
         };
 
-        res.status(200).send({ success: true, responseData });
+        res.status(200).send({success: true, responseData});
       })
       .catch((error) => {
         console.log(error?.response);
-        res
-          .status(500)
-          .send({ success: false, message: "something went wrong" });
+        res.status(500).send({success: false, message: "something went wrong"});
       });
   } catch (e) {
     console.log(e);
-    res.status(500).send({ success: false, message: "something went wrong" });
+    res.status(500).send({success: false, message: "something went wrong"});
   }
 }
 
 // Create Global Option
 async function create_global_option(req, res) {
   try {
-    const { type, object_value, value } = req.body;
+    const {type, object_value, value} = req.body;
 
     let key = await global_helper.get_option_by_key(type);
 
@@ -859,7 +850,7 @@ async function create_global_option(req, res) {
       optionData.object_value = object_value;
     }
 
-    const result = await options.create({ key: type, ...optionData });
+    const result = await options.create({key: type, ...optionData});
 
     return res.status(200).json({
       message: "global option created successfully",
@@ -874,7 +865,7 @@ async function create_global_option(req, res) {
 // Update Global Option
 async function update_options(req, res) {
   try {
-    const { type, object_value, value } = req.body;
+    const {type, object_value, value} = req.body;
 
     let key = await global_helper.get_option_by_key(type);
 
@@ -893,9 +884,9 @@ async function update_options(req, res) {
     }
 
     let result = await options.findOneAndUpdate(
-      { key: type },
-      { $set: updateObj },
-      { new: true }
+      {key: type},
+      {$set: updateObj},
+      {new: true}
     );
 
     return res.status(200).json({
@@ -920,7 +911,7 @@ async function coinbase_webhooks(req, res) {
     if (!verify) {
       return res
         .status(400)
-        .send({ success: false, message: "invalid signature" });
+        .send({success: false, message: "invalid signature"});
     }
 
     const event = req.body.event;
@@ -929,8 +920,8 @@ async function coinbase_webhooks(req, res) {
     let metadata = event.data.metadata;
     if (event.type === "charge:confired") {
       await transactions.findOneAndUpdate(
-        { tx_hash: metadata.tx_hash },
-        { tx_status: "paid", amount: Number(amount) }
+        {tx_hash: metadata.tx_hash},
+        {tx_status: "paid", amount: Number(amount)}
       );
     }
 
@@ -977,8 +968,8 @@ async function coinbase_webhooks(req, res) {
                     "ether"
                   );
                   await transactions.findOneAndUpdate(
-                    { tx_hash: metadata.tx_hash },
-                    { tx_status: "canceled", tx_fee: transactionFee }
+                    {tx_hash: metadata.tx_hash},
+                    {tx_status: "canceled", tx_fee: transactionFee}
                   );
                 })
                 .on("error", console.log);
@@ -989,12 +980,12 @@ async function coinbase_webhooks(req, res) {
         console.log(e);
       }
     }
-    return res.status(200).send({ success: true });
+    return res.status(200).send({success: true});
   } catch (e) {
     console.log(e);
     return res
       .status(500)
-      .send({ success: false, message: "Internal server error" });
+      .send({success: false, message: "Internal server error"});
   }
 }
 
@@ -1004,14 +995,14 @@ async function create_exchange_transaction(req, res) {
     //address = "0x677dD459bEF0F585ffB17734e8f1968ff4805a39";
 
     if (!address) {
-      return res.status(400).json({ error: "you are not logged in" });
+      return res.status(400).json({error: "you are not logged in"});
     }
 
-    let { rpc1, rpc2, tokenAddress, amount, decimals, isNative, tokenCount } =
+    let {rpc1, rpc2, tokenAddress, amount, decimals, isNative, tokenCount} =
       req.body;
     amount = parseFloat(amount);
 
-    let { data } = await axios.post(
+    let {data} = await axios.post(
       process.env.PAYMENT_API + "/v1/createExchange",
       {
         rpc: rpc1,
@@ -1053,12 +1044,12 @@ async function create_exchange_transaction(req, res) {
       },
     });
 
-    return res.status(200).send({ success: true, data, createdTransaction });
+    return res.status(200).send({success: true, data, createdTransaction});
   } catch (e) {
     console.log(e);
     return res
       .status(500)
-      .send({ success: false, message: "Internal server error" });
+      .send({success: false, message: "Internal server error"});
   }
 }
 
@@ -1067,30 +1058,30 @@ async function get_exchange_status(req, res) {
     let address = req.address;
 
     if (!address) {
-      return res.status(400).json({ error: "you are not logged in" });
+      return res.status(400).json({error: "you are not logged in"});
     }
 
-    let { exchangeId } = req.body;
+    let {exchangeId} = req.body;
 
     if (!exchangeId || !ObjectId.isValid(exchangeId)) {
-      return res.status(400).json({ error: "Invalid exchangeId" });
+      return res.status(400).json({error: "Invalid exchangeId"});
     }
 
     let exchangeIdAsObjectId = new ObjectId(exchangeId);
 
-    let { data } = await axios.post(
+    let {data} = await axios.post(
       process.env.PAYMENT_API + "/v1/getExchangeInfo",
       {
         exchangeId: exchangeIdAsObjectId,
       }
     );
 
-    return res.status(200).send({ success: true, data });
+    return res.status(200).send({success: true, data});
   } catch (e) {
     console.log(e);
     return res
       .status(500)
-      .send({ success: false, message: "Internal server error" });
+      .send({success: false, message: "Internal server error"});
   }
 }
 
@@ -1098,24 +1089,24 @@ async function check_transactions_for_pending(io) {
   const hourAgo = new Date(Date.now() - 5 * 60 * 1000);
   const [get_txs, ratesObj, updated_txs] = await Promise.all([
     transactions.find({
-      exchange_id: { $ne: null },
+      exchange_id: {$ne: null},
       tx_status: "pending",
-      createdAt: { $gte: hourAgo },
+      createdAt: {$gte: hourAgo},
     }),
     rates.findOne(),
     transactions.updateMany(
       {
-        exchange_id: { $ne: null },
+        exchange_id: {$ne: null},
         tx_status: "pending",
-        createdAt: { $lt: hourAgo },
+        createdAt: {$lt: hourAgo},
       },
-      { $set: { tx_status: "canceled" } }
+      {$set: {tx_status: "canceled"}}
     ),
   ]);
 
   const updatePromises = get_txs.map(async (tx) => {
     const exchangeId = tx.exchange_id;
-    let { data } = await axios.post(
+    let {data} = await axios.post(
       process.env.PAYMENT_API + "/v1/getExchangeInfo",
       {
         exchangeId: exchangeId,
@@ -1133,8 +1124,8 @@ async function check_transactions_for_pending(io) {
       // let receivedisNative = data?.exchange?.isNative;
 
       await transactions.updateOne(
-        { exchange_id: exchangeId },
-        { $set: { tx_status: "approved" } }
+        {exchange_id: exchangeId},
+        {$set: {tx_status: "approved"}}
       );
 
       console.log(exchangeId, "exchangeId");
@@ -1152,9 +1143,9 @@ async function check_transactions_for_pending(io) {
         let finalTokenCount = Math.abs(approved_tx.tx_options.tokenCount);
 
         let transaction = await accounts.findOneAndUpdate(
-          { account_owner: approved_tx.from, account_category: "main" },
-          { $inc: { balance: finalTokenCount } },
-          { new: true }
+          {account_owner: approved_tx.from, account_category: "main"},
+          {$inc: {balance: finalTokenCount}},
+          {new: true}
         );
 
         console.log(transaction, "transaction");
@@ -1283,18 +1274,18 @@ const cancel_exchange = async (req, res) => {
     let address = req.address;
 
     if (!address) {
-      return res.status(400).json({ error: "you are not logged in" });
+      return res.status(400).json({error: "you are not logged in"});
     }
 
-    let { exchangeId } = req.body;
+    let {exchangeId} = req.body;
 
     if (!exchangeId || !ObjectId.isValid(exchangeId)) {
-      return res.status(400).json({ error: "Invalid exchangeId" });
+      return res.status(400).json({error: "Invalid exchangeId"});
     }
 
     let exchangeIdAsObjectId = new ObjectId(exchangeId);
 
-    let { data } = await axios.post(
+    let {data} = await axios.post(
       process.env.PAYMENT_API + "/v1/getExchangeInfo",
       {
         exchangeId: exchangeIdAsObjectId,
@@ -1303,27 +1294,27 @@ const cancel_exchange = async (req, res) => {
 
     if (data?.exchange?.status === "pending") {
       await transactions.updateOne(
-        { exchange_id: exchangeId },
-        { $set: { tx_status: "canceled" } }
+        {exchange_id: exchangeId},
+        {$set: {tx_status: "canceled"}}
       );
     }
 
-    return res.status(200).send({ success: true });
+    return res.status(200).send({success: true});
   } catch (e) {
     console.log(e);
     return res
       .status(500)
-      .send({ success: false, message: "Internal server error" });
+      .send({success: false, message: "Internal server error"});
   }
 };
 
 async function make_withdrawal(req, res) {
-  let { address_to, amount, accountType, rate, fee, hash } = req.body;
+  let {address_to, amount, accountType, rate, fee, hash} = req.body;
 
   let address = req.address;
 
   if (!address) {
-    return res.status(400).json({ error: "You are not logged in" });
+    return res.status(400).json({error: "You are not logged in"});
   }
 
   amount = parseFloat(amount);
@@ -1372,9 +1363,9 @@ async function make_withdrawal(req, res) {
 
       const [updatedMainAcc] = await Promise.all([
         accounts.findOneAndUpdate(
-          { account_owner: address, account_category: "main" },
-          { $inc: { balance: 0 - amount } },
-          { new: true }
+          {account_owner: address, account_category: "main"},
+          {$inc: {balance: 0 - amount}},
+          {new: true}
         ),
         transactions.create({
           from: address,
@@ -1429,9 +1420,9 @@ async function make_withdrawal(req, res) {
 
     const [updatedMainAcc] = await Promise.all([
       accounts.findOneAndUpdate(
-        { account_owner: address, account_category: "main" },
-        { $inc: { [`assets.${accountType}`]: 0 - amount } },
-        { new: true }
+        {account_owner: address, account_category: "main"},
+        {$inc: {[`assets.${accountType}`]: 0 - amount}},
+        {new: true}
       ),
       transactions.create({
         from: address,
@@ -1467,20 +1458,18 @@ async function make_withdrawal(req, res) {
     console.log(e, "make_withdrawal");
     return res
       .status(500)
-      .send({ success: false, message: "Internal server error" });
+      .send({success: false, message: "Internal server error"});
   }
 }
 
 async function direct_deposit(req, res) {
   try {
-    let { hash } = req.body;
+    let {hash} = req.body;
 
     let address = req.address;
 
     if (!address || !hash) {
-      return res
-        .status(400)
-        .json({ error: "you are not logged in or not hash" });
+      return res.status(400).json({error: "you are not logged in or not hash"});
     }
 
     let tx_hash_generated = global_helper.make_hash();
@@ -1493,7 +1482,7 @@ async function direct_deposit(req, res) {
     if (existingTransaction) {
       return res
         .status(400)
-        .json({ error: "Transaction with this hash already exists." });
+        .json({error: "Transaction with this hash already exists."});
     }
 
     const [tx, ratesObj] = await Promise.all([
@@ -1519,9 +1508,9 @@ async function direct_deposit(req, res) {
 
       const [updatedAccount] = await Promise.all([
         accounts.findOneAndUpdate(
-          { account_owner: address, account_category: "main" },
-          { $inc: { balance: tokenAmount } },
-          { new: true }
+          {account_owner: address, account_category: "main"},
+          {$inc: {balance: tokenAmount}},
+          {new: true}
         ),
         transactions.create({
           from: address,
@@ -1552,34 +1541,34 @@ async function direct_deposit(req, res) {
     }
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "An error occurred" });
+    res.status(500).json({error: "An error occurred"});
   }
 }
 
 // Get One Tx By Hash
 async function get_transaction_by_hash(req, res) {
   try {
-    let { hash } = req.body;
+    let {hash} = req.body;
 
     if (!hash)
       return res
         .status(400)
         .json(main_helper.error_message("hash is required"));
 
-    const transaction = await transactions.findOne({ tx_hash: hash });
+    const transaction = await transactions.findOne({tx_hash: hash});
 
     if (!transaction)
       return res
         .status(200)
         .json(main_helper.error_message("transaction not found"));
 
-    return res.status(200).send({ success: true, transaction });
+    return res.status(200).send({success: true, transaction});
   } catch (e) {}
 }
 
 async function unstake_transaction(req, res) {
   try {
-    let { index } = req.body;
+    let {index} = req.body;
 
     let address = req.address;
 
@@ -1628,9 +1617,9 @@ async function unstake_transaction(req, res) {
 
     const [updatedAccount] = await Promise.all([
       accounts.findOneAndUpdate(
-        { account_owner: address, account_category: "main" },
-        { $inc: { balance: 0 - result.amount / 10 ** 18 } },
-        { new: true }
+        {account_owner: address, account_category: "main"},
+        {$inc: {balance: 0 - result.amount / 10 ** 18}},
+        {new: true}
       ),
       transactions.create({
         from: address,
@@ -1647,23 +1636,45 @@ async function unstake_transaction(req, res) {
       }),
     ]);
 
-    return res.status(200).send({ success: true, updatedAccount, result });
+    return res.status(200).send({success: true, updatedAccount, result});
   } catch (e) {
     console.log(e);
-    res.status(500).json({ error: "An error occurred" });
+    res.status(500).json({error: "An error occurred"});
   }
 }
 
-async function exchange(req, res) {
+async function harvest_transaction(req, res) {
+  console.log(req.body, "rassdfs");
   try {
-    let { fromAccType, fromAmount, toAccType, toAmount } = req.body;
+    let {index, address} = req.body;
 
-    let address = req.address;
+    // let address = req.address;
 
     if (!address)
       return res
         .status(400)
-        .send({ success: false, message: "you are not logged in" });
+        .json(main_helper.error_message("you are not logged in"));
+
+    if (typeof index !== "number")
+      return res
+        .status(400)
+        .json(main_helper.error_message("index is required"));
+
+    address = address.toLowerCase();
+
+    const stakingContract = new web3.eth.Contract(
+      STACK_ABI,
+      stakingContractAddress
+    );
+    const result = await stakingContract.methods
+      .realtimeRewardPerBlock(address, index)
+      .call();
+
+    console.log(result, "res");
+
+    // if (!result["0"] <= 0) {
+    //   return res.status(400).json(main_helper.error_message("amount is 0"));
+    // }
 
     const [mainAccount, ratesObj] = await Promise.all([
       accounts.findOne({
@@ -1676,7 +1687,63 @@ async function exchange(req, res) {
     if (!mainAccount) {
       return res
         .status(400)
-        .send({ success: false, message: "main account not found" });
+        .json(main_helper.error_message("main account not found"));
+    }
+
+    let tx_hash_generated = global_helper.make_hash();
+    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
+
+    const [updatedAccount, createTransactions] = await Promise.all([
+      accounts.findOneAndUpdate(
+        {account_owner: address, account_category: "main"},
+        {$inc: {balance: +result["0"] / 10 ** 18}},
+        {new: true}
+      ),
+      transactions.create({
+        from: address,
+        to: address,
+        amount: result["0"] / 10 ** 18,
+        tx_hash,
+        tx_type: "harvest",
+        tx_currency: "ether",
+        tx_status: "approved",
+        tx_options: {
+          method: "harvest",
+        },
+        A1_price: ratesObj?.atr?.usd ?? 2,
+      }),
+    ]);
+
+    return res.status(200).send({updatedAccount, createTransactions});
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({error: "An error occurred"});
+  }
+}
+
+async function exchange(req, res) {
+  try {
+    let {fromAccType, fromAmount, toAccType, toAmount} = req.body;
+
+    let address = req.address;
+
+    if (!address)
+      return res
+        .status(400)
+        .send({success: false, message: "you are not logged in"});
+
+    const [mainAccount, ratesObj] = await Promise.all([
+      accounts.findOne({
+        account_owner: address,
+        account_category: "main",
+      }),
+      rates.findOne(),
+    ]);
+
+    if (!mainAccount) {
+      return res
+        .status(400)
+        .send({success: false, message: "main account not found"});
     }
 
     if (!mainAccount.active) {
@@ -1695,11 +1762,11 @@ async function exchange(req, res) {
     if (fromAccType === "ATAR" && mainAccount.balance < fromAmount) {
       return res
         .status(400)
-        .send({ success: false, message: "insufficient balance" });
+        .send({success: false, message: "insufficient balance"});
     } else if (mainAccount.assets?.[fromAccType] < fromAmount) {
       return res
         .status(400)
-        .send({ success: false, message: "insufficient balance" });
+        .send({success: false, message: "insufficient balance"});
     }
 
     let tx_hash_generated = global_helper.make_hash();
@@ -1708,12 +1775,12 @@ async function exchange(req, res) {
     let query = null;
     if (fromAccType === "ATAR") {
       query = accounts.findOneAndUpdate(
-        { account_owner: address, account_category: "main" },
-        { $inc: { balance: 0 - fromAmount, [`assets.${toAccType}`]: toAmount } }
+        {account_owner: address, account_category: "main"},
+        {$inc: {balance: 0 - fromAmount, [`assets.${toAccType}`]: toAmount}}
       );
     } else if (toAccType === "ATAR") {
       query = accounts.findOneAndUpdate(
-        { account_owner: address, account_category: "main" },
+        {account_owner: address, account_category: "main"},
         {
           $inc: {
             balance: toAmount,
@@ -1723,7 +1790,7 @@ async function exchange(req, res) {
       );
     } else {
       query = accounts.findOneAndUpdate(
-        { account_owner: address, account_category: "main" },
+        {account_owner: address, account_category: "main"},
         {
           $inc: {
             [`assets.${fromAccType}`]: 0 - fromAmount,
@@ -1753,12 +1820,12 @@ async function exchange(req, res) {
       }),
     ]);
 
-    return res.status(200).send({ success: true, result: mainAccountUpdated });
+    return res.status(200).send({success: true, result: mainAccountUpdated});
   } catch (e) {
     console.log(e, "exchange");
     return res
       .status(500)
-      .send({ success: false, message: "Internal server error" });
+      .send({success: false, message: "Internal server error"});
   }
 }
 
@@ -1774,7 +1841,7 @@ const calculateExpectedReward = (amount, percentage, duration) => {
 async function stakeCurrency(req, res) {
   // Extract necessary data from the request
   let addr = req.address;
-  let { amount, currency, percentage, duration } = req.body;
+  let {amount, currency, percentage, duration} = req.body;
 
   try {
     // Check if address is provided
@@ -1885,14 +1952,14 @@ async function stakeCurrency(req, res) {
 
     // Update account
     const updateAccountPromise = accounts.findOneAndUpdate(
-      { account_owner: address, account_category: "main" },
+      {account_owner: address, account_category: "main"},
       {
         $inc: {
           [`assets.${currency}Staked`]: +amount,
           [`assets.${currency}`]: -amount,
         },
       },
-      { new: true }
+      {new: true}
     );
 
     // Wait for account update and transaction creation to complete
@@ -1922,7 +1989,7 @@ async function get_currency_stakes(req, res) {
       return main_helper.error_response(res, "You are not logged in");
     }
 
-    const stakes = await currencyStakes.find({ address });
+    const stakes = await currencyStakes.find({address});
 
     return main_helper.success_response(res, stakes);
   } catch (e) {
@@ -1933,15 +2000,15 @@ async function get_currency_stakes(req, res) {
 
 async function get_currency_stakes_by_status(req, res) {
   try {
-    const { status, address } = req.body;
+    const {status, address} = req.body;
 
     if (!address) {
       if (status === "unpaid") {
-        const stakes = await currencyStakes.find({ status: "unpaid" });
+        const stakes = await currencyStakes.find({status: "unpaid"});
         return main_helper.success_response(res, stakes);
       }
       if (status === "paid") {
-        const stakes = await currencyStakes.find({ status: "paid" });
+        const stakes = await currencyStakes.find({status: "paid"});
         return main_helper.success_response(res, stakes);
       } else {
         const stakes = await currencyStakes.find({});
@@ -1950,7 +2017,7 @@ async function get_currency_stakes_by_status(req, res) {
     } else {
       const addr = address.toLowerCase();
 
-      const stakes = await currencyStakes.find({ address: addr });
+      const stakes = await currencyStakes.find({address: addr});
       return main_helper.success_response(res, stakes);
     }
   } catch (e) {
@@ -1960,7 +2027,7 @@ async function get_currency_stakes_by_status(req, res) {
 }
 
 async function give_rewards(req, res) {
-  let { currency_stakes_id } = req.body;
+  let {currency_stakes_id} = req.body;
 
   try {
     // Find the currency stake and check its status
@@ -1978,24 +2045,24 @@ async function give_rewards(req, res) {
 
     // Update the status of the currency stake
     const updateStakes = await currencyStakes.findOneAndUpdate(
-      { _id: currency_stakes_id },
-      { status: "paid" },
-      { returnDocument: "after" }
+      {_id: currency_stakes_id},
+      {status: "paid"},
+      {returnDocument: "after"}
     );
 
-    const { expected_reward, currency, amount } = existingStakes;
+    const {expected_reward, currency, amount} = existingStakes;
     console.log(existingStakes, "ex");
 
     // Update the user's account
     const updateUserAccount = accounts.findOneAndUpdate(
-      { account_owner: updateStakes?.address },
+      {account_owner: updateStakes?.address},
       {
         $inc: {
           [`assets.${currency}`]: +(Number(expected_reward) + Number(amount)),
           [`assets.${currency}Staked`]: -Number(amount),
         },
       },
-      { new: true }
+      {new: true}
     );
 
     const [updatedAccount] = await Promise.all([updateUserAccount]);
@@ -2015,6 +2082,7 @@ async function give_rewards(req, res) {
 }
 
 module.exports = {
+  harvest_transaction,
   create_deposit_transaction,
   pending_deposit_transaction,
   coinbase_deposit_transaction,

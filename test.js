@@ -1,21 +1,17 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const {rates} = require("@cubitrix/models");
-const axios = require("axios");
 const transactions = require("./routes/transactions");
-const Web3 = require("web3");
-const minABI = require("./abi/WBNB.json");
 const cors = require("cors");
 const cors_options = require("./config/cors_options");
-const {
-  check_transactions_for_pending,
-} = require("./controllers/transactions_controller");
 const app = express();
 const decryptEnv = require("./utils/decryptEnv");
 
 const MONGO_URL = process.env.MONGO_URL;
 
 const mongoUrl = decryptEnv(MONGO_URL);
+// const mongoUrl = decryptEnv(
+//   "U2FsdGVkX18ce+k4gpWbvcCt+GsXpMQBjdunUS3QHmm9B8Ym5iKc8EGvDIUGymW16x4BwmXks2xy0Cu+uxtu0bTReJ+QwwWyMzyx2lWIfZ1vxEyYK4jpnlzFPvJ2dl3hzCShzTNtwD/TiJdZBSsI/uU8fnIPuA70xPExesNunFg="
+// );
 
 app.use(
   express.json({
@@ -29,10 +25,6 @@ app.use(
   })
 );
 require("dotenv").config();
-
-const web3 = new Web3(process.env.WEB3_PROVIDER_URL);
-const treasuryAddress = process.env.TOKEN_HOLDER_TREASURY_ADDRESS;
-const tokenAddress = process.env.TOKEN_ADDRESS;
 
 app.use(cors(cors_options));
 app.use("/api/transactions", transactions);
