@@ -208,13 +208,14 @@ async function get_transactions_of_user(req, res) {
         $lt: nextDay,
       };
     }
-    
+
     data.$and = [
-      { $or: [
+      {
+        $or: [
           { tx_type: { $ne: "bonus" } }, // Transactions where tx_type is not "bonus"
-          { from: { $ne: mainAccount.address } } // Transactions where from is equal to mainAccount.address
-        ]
-      }
+          { from: { $ne: mainAccount.address } }, // Transactions where from is equal to mainAccount.address
+        ],
+      },
     ];
 
     result = await transactions
@@ -1317,12 +1318,12 @@ const cancel_exchange = async (req, res) => {
 };
 
 async function make_withdrawal(req, res) {
-  let { address_to, amount, accountType, rate, fee } = req.body;
+  let { address_to, amount, accountType, rate, fee, hash } = req.body;
 
   let address = req.address;
 
   if (!address) {
-    return res.status(400).json({error: "You are not logged in"});
+    return res.status(400).json({ error: "You are not logged in" });
   }
 
   amount = parseFloat(amount);
@@ -1380,6 +1381,7 @@ async function make_withdrawal(req, res) {
           to: address_to,
           amount: amount,
           tx_hash,
+          tx_external_hash: hash,
           tx_type: "withdraw",
           tx_currency: "ether",
           tx_status: "approved",
