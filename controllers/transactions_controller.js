@@ -41,6 +41,7 @@ const TOKEN_HOLDER_TREASURY_PRIVATE_KEY =
   process.env.TOKEN_HOLDER_TREASURY_PRIVATE_KEY;
 
 const coinbaseApiKey = decryptEnv(COINBASE_API_KEY);
+
 const coinbaseWebhookSecret = decryptEnv(COINBASE_WEBHOOK_SECRET);
 const treasuryAddress = decryptEnv(TOKEN_HOLDER_TREASURY_ADDRESS);
 const tokenAddress = decryptEnv(TOKEN_ADDRESS);
@@ -1646,37 +1647,18 @@ async function unstake_transaction(req, res) {
 async function harvest_transaction(req, res) {
   console.log(req.body, "rassdfs");
   try {
-    let {index, address} = req.body;
+    let {amount} = req.body;
 
-    // let address = req.address;
+    let address = req.address;
 
-    if (!address)
+    if (!address || !amount)
       return res
         .status(400)
         .json(main_helper.error_message("you are not logged in"));
 
-    if (typeof index !== "number")
-      return res
-        .status(400)
-        .json(main_helper.error_message("index is required"));
-
     address = address.toLowerCase();
 
-    const stakingContract = new web3.eth.Contract(
-      STACK_ABI,
-      stakingContractAddress
-    );
-    const result = await stakingContract.methods
-      .realtimeRewardPerBlock(address, index)
-      .call();
-
-    console.log(result, "res");
-
-    // if (!result["0"] <= 0) {
-    //   return res.status(400).json(main_helper.error_message("amount is 0"));
-    // }
-
-    const [mainAccount, ratesObj] = await Promise.all([
+    const [ratesObj] = await Promise.all([
       accounts.findOne({
         account_owner: address,
         account_category: "main",
@@ -1684,25 +1666,14 @@ async function harvest_transaction(req, res) {
       rates.findOne(),
     ]);
 
-    if (!mainAccount) {
-      return res
-        .status(400)
-        .json(main_helper.error_message("main account not found"));
-    }
-
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
-    const [updatedAccount, createTransactions] = await Promise.all([
-      accounts.findOneAndUpdate(
-        {account_owner: address, account_category: "main"},
-        {$inc: {balance: +result["0"] / 10 ** 18}},
-        {new: true}
-      ),
+    const [createTransactions] = await Promise.all([
       transactions.create({
         from: address,
         to: address,
-        amount: result["0"] / 10 ** 18,
+        amount: amount / 10 ** 18,
         tx_hash,
         tx_type: "harvest",
         tx_currency: "ether",
@@ -1714,7 +1685,7 @@ async function harvest_transaction(req, res) {
       }),
     ]);
 
-    return res.status(200).send({updatedAccount, createTransactions});
+    return res.status(200).send({createTransactions});
   } catch (e) {
     console.log(e);
     res.status(500).json({error: "An error occurred"});
