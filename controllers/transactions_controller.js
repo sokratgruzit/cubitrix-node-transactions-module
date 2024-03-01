@@ -1645,13 +1645,12 @@ async function unstake_transaction(req, res) {
 }
 
 async function harvest_transaction(req, res) {
-  console.log(req.body, "rassdfs");
   try {
-    let {amount} = req.body;
+    let {resept} = req.body;
 
     let address = req.address;
 
-    if (!address || !amount)
+    if (!address)
       return res
         .status(400)
         .json(main_helper.error_message("you are not logged in"));
@@ -1666,15 +1665,12 @@ async function harvest_transaction(req, res) {
       rates.findOne(),
     ]);
 
-    let tx_hash_generated = global_helper.make_hash();
-    let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
-
     const [createTransactions] = await Promise.all([
       transactions.create({
-        from: address,
+        from: resept.from,
         to: address,
-        amount: amount / 10 ** 18,
-        tx_hash,
+        amount: resept.events.HARVEST.returnValues.amount / 10 ** 18,
+        tx_hash: resept.transactionHash,
         tx_type: "harvest",
         tx_currency: "ether",
         tx_status: "approved",
