@@ -10,7 +10,7 @@
   "author": "jinx",
   "license": "MIT",
   "dependencies": {
-    "@cubitrix/models": ">=0.1.58",
+    "@cubitrix/models": ">=0.1.66",
     "crypto-js": "^4.2.0",
     "axios": ">=1.4.0",
     "bignumber.js": "^9.1.2",
@@ -27,7 +27,7 @@
     "web3": "^1.8.1"
   },
   "peerDependencies": {
-    "@cubitrix/models": ">=0.1.58",
+    "@cubitrix/models": ">=0.1.66",
     "axios": ">=1.4.0",
     "jsonwebtoken": ">=9.0.0"
   },
