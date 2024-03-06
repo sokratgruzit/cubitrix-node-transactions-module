@@ -419,7 +419,7 @@ async function make_transfer(req, res) {
         metaAccount?.name
       );
       await verify_txs.create({
-        from,
+        from: "main account",
         to,
         amount,
         tx_hash,
@@ -453,7 +453,7 @@ async function make_transfer(req, res) {
         );
 
         await verify_txs.create({
-          from,
+          from: "main account",
           to,
           amount,
           tx_hash,
@@ -481,7 +481,7 @@ async function make_transfer(req, res) {
           {new: true}
         ),
         transactions.create({
-          from,
+          from: "main account",
           to,
           amount,
           tx_hash,
@@ -1270,7 +1270,7 @@ async function check_transactions_for_pending(io) {
   await Promise.all(updatePromises);
 }
 
-const cancel_exchange = async (req, res) => {
+async function cancel_exchange(req, res) {
   try {
     let address = req.address;
 
@@ -1307,7 +1307,7 @@ const cancel_exchange = async (req, res) => {
       .status(500)
       .send({success: false, message: "Internal server error"});
   }
-};
+}
 
 async function make_withdrawal(req, res) {
   let {address_to, amount, accountType, rate, fee, hash} = req.body;
@@ -1369,7 +1369,7 @@ async function make_withdrawal(req, res) {
           {new: true}
         ),
         transactions.create({
-          from: address,
+          from: "main account",
           to: address_to,
           amount: amount,
           tx_hash,
@@ -1426,7 +1426,7 @@ async function make_withdrawal(req, res) {
         {new: true}
       ),
       transactions.create({
-        from: address,
+        from: "main account",
         to: address_to,
         amount,
         tx_hash,
@@ -1515,7 +1515,7 @@ async function direct_deposit(req, res) {
         ),
         transactions.create({
           from: address,
-          to: address,
+          to: "main account",
           amount: tokenAmount,
           tx_hash,
           tx_type: "deposit",
