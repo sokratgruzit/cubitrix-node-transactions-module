@@ -1124,7 +1124,7 @@ async function check_transactions_for_pending(io) {
 
     // let receiveAmount =
     //   data?.exchange?.receiveAmount ?? data?.exchange?.sentAmount;
-    console.log(data.exchange?.status, "status");
+    console.log(data.exchange?.status, exchangeId, "status");
 
     if (data.exchange?.status === "success") {
       // let receivedTokenAddress = data?.exchange?.tokenAddress;
