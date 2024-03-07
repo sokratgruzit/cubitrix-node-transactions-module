@@ -1,7 +1,6 @@
 const main_helper = require("../helpers/index");
 var Web3 = require("web3");
 const {options, accounts, account_meta} = require("@cubitrix/models");
-const {ObjectId} = require("mongodb");
 const decryptEnv = require("../utils/decryptEnv");
 
 const SENDER_EMAIL_PASSWORD = process.env.SENDER_EMAIL_PASSWORD;
