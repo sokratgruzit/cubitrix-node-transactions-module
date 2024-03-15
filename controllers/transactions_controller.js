@@ -277,7 +277,7 @@ async function create_deposit_transaction(
     let denomination = 0;
 
     const accountMeta = await account_meta.findOne({
-      address: account_main.address,
+      address: from,
     });
 
     const createdTransaction = await transactions.create({
@@ -285,8 +285,8 @@ async function create_deposit_transaction(
       to: account_main?.address,
       amount,
       account_metas: {
-        email: accountMeta.email,
-        name: accountMeta.name,
+        email: accountMeta?.email,
+        name: accountMeta?.name,
       },
       tx_hash,
       tx_status: "approved",
@@ -505,8 +505,8 @@ async function make_transfer(req, res) {
           from,
           to,
           account_metas: {
-            email: metaAccount.email,
-            name: metaAccount.name,
+            email: metaAccount?.email,
+            name: metaAccount?.name,
           },
           amount,
           tx_hash,
@@ -606,7 +606,7 @@ async function verify_external_transaction(req, res) {
     }
 
     const accountMeta = await account_meta.findOne({
-      address: account_from.address,
+      address: address.toLowerCase(),
     });
 
     let operations = [];
@@ -634,8 +634,8 @@ async function verify_external_transaction(req, res) {
             from: address,
             to,
             account_metas: {
-              email: accountMeta.email,
-              name: accountMeta.name,
+              email: accountMeta?.email,
+              name: accountMeta?.name,
             },
             amount: amountFloat,
             tx_hash,
@@ -672,8 +672,8 @@ async function verify_external_transaction(req, res) {
           from: address,
           to,
           account_metas: {
-            email: accountMeta.email,
-            name: accountMeta.name,
+            email: accountMeta?.email,
+            name: accountMeta?.name,
           },
           amount: amountFloat,
           tx_hash,
@@ -762,15 +762,15 @@ async function pending_deposit_transaction(req, res) {
     ]);
 
     const accountMeta = await account_meta.findOne({
-      address: account_from.address,
+      address: from.toLowerCase(),
     });
 
     const transaction = await transactions.create({
       from,
       to: account_main?.address,
       account_metas: {
-        email: accountMeta.email,
-        name: accountMeta.name,
+        email: accountMeta?.email,
+        name: accountMeta?.name,
       },
       amount,
       tx_hash,
@@ -1086,15 +1086,15 @@ async function create_exchange_transaction(req, res) {
     let denomination = 0;
 
     const accountMeta = await account_meta.findOne({
-      address: account_main.address,
+      address: address.toLowerCase(),
     });
 
     const createdTransaction = await transactions.create({
       from: address,
       to: account_main?.address,
       account_metas: {
-        email: accountMeta.email,
-        name: accountMeta.name,
+        email: accountMeta?.email,
+        name: accountMeta?.name,
       },
       amount,
       tx_hash,
@@ -1481,7 +1481,7 @@ async function make_withdrawal(req, res) {
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
     const accountMeta = await account_meta.findOne({
-      address: mainAccount.address,
+      address: address.toLowerCase(),
     });
 
     const [updatedMainAcc] = await Promise.all([
@@ -1494,8 +1494,8 @@ async function make_withdrawal(req, res) {
         from: "main account",
         to: address_to,
         account_metas: {
-          email: accountMeta.email,
-          name: accountMeta.name,
+          email: accountMeta?.email,
+          name: accountMeta?.name,
         },
         amount,
         tx_hash,
@@ -1587,15 +1587,15 @@ async function direct_deposit(req, res) {
       ]);
 
       const accountMeta = await account_meta.findOne({
-        address: updatedAccount.address,
+        address: address.toLowerCase(),
       });
 
       const newTransaction = transactions.create({
         from: address,
         to: "main account",
         account_metas: {
-          email: accountMeta.email,
-          name: accountMeta.name,
+          email: accountMeta?.email,
+          name: accountMeta?.name,
         },
         amount: tokenAmount,
         tx_hash,
@@ -1697,7 +1697,7 @@ async function unstake_transaction(req, res) {
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
     const accountMeta = await account_meta.findOne({
-      address: mainAccount.address,
+      address: address.toLowerCase(),
     });
 
     const [updatedAccount, trandaction] = await Promise.all([
@@ -1710,8 +1710,8 @@ async function unstake_transaction(req, res) {
         from: address,
         to: address,
         account_metas: {
-          email: accountMeta.email,
-          name: accountMeta.name,
+          email: accountMeta?.email,
+          name: accountMeta?.name,
         },
         amount: result.amount / 10 ** 18,
         tx_hash,
@@ -1754,7 +1754,7 @@ async function harvest_transaction(req, res) {
     ]);
 
     const accountMeta = await account_meta.findOne({
-      address: mainAccount.address,
+      address: address.toLowerCase(),
     });
 
     const [createTransactions] = await Promise.all([
@@ -1762,8 +1762,8 @@ async function harvest_transaction(req, res) {
         from: resept.from,
         to: address,
         account_metas: {
-          email: accountMeta.email,
-          name: accountMeta.name,
+          email: accountMeta?.email,
+          name: accountMeta?.name,
         },
         amount: resept.events.HARVEST.returnValues.amount / 10 ** 18,
         tx_hash: resept.transactionHash,
@@ -1804,7 +1804,7 @@ async function exchange(req, res) {
     ]);
 
     const accountMeta = await account_meta.findOne({
-      address: mainAccount.address,
+      address: address.toLowerCase(),
     });
 
     if (!mainAccount) {
@@ -1872,8 +1872,8 @@ async function exchange(req, res) {
         from: address,
         to: address,
         account_metas: {
-          email: accountMeta.email,
-          name: accountMeta.name,
+          email: accountMeta?.email,
+          name: accountMeta?.name,
         },
         amount: fromAmount,
         tx_hash,
@@ -1998,7 +1998,7 @@ async function stakeCurrency(req, res) {
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
     const accountMeta = await account_meta.findOne({
-      address: mainAccount.address,
+      address: address,
     });
 
     // Create transaction
@@ -2006,8 +2006,8 @@ async function stakeCurrency(req, res) {
       from: address,
       to: address,
       account_metas: {
-        email: accountMeta.email,
-        name: accountMeta.name,
+        email: accountMeta?.email,
+        name: accountMeta?.name,
       },
       amount: amount,
       tx_hash,
