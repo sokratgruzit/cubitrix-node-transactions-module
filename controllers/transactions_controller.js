@@ -276,10 +276,18 @@ async function create_deposit_transaction(
 
     let denomination = 0;
 
+    const accountMeta = await account_meta.findOne({
+      address: account_main.address,
+    });
+
     const createdTransaction = await transactions.create({
       from,
       to: account_main?.address,
       amount,
+      account_metas: {
+        email: accountMeta.email,
+        name: accountMeta.name,
+      },
       tx_hash,
       tx_status: "approved",
       tx_type,
@@ -496,6 +504,10 @@ async function make_transfer(req, res) {
         transactions.create({
           from,
           to,
+          account_metas: {
+            email: metaAccount.email,
+            name: metaAccount.name,
+          },
           amount,
           tx_hash,
           tx_status: "approved",
@@ -593,6 +605,10 @@ async function verify_external_transaction(req, res) {
       return main_helper.error_response(res, "Cannot transfer to this account");
     }
 
+    const accountMeta = await account_meta.findOne({
+      address: account_from.address,
+    });
+
     let operations = [];
 
     const amountFloat = parseFloat(amount);
@@ -617,6 +633,10 @@ async function verify_external_transaction(req, res) {
           transactions.create({
             from: address,
             to,
+            account_metas: {
+              email: accountMeta.email,
+              name: accountMeta.name,
+            },
             amount: amountFloat,
             tx_hash,
             tx_status: "approved",
@@ -651,6 +671,10 @@ async function verify_external_transaction(req, res) {
         transactions.create({
           from: address,
           to,
+          account_metas: {
+            email: accountMeta.email,
+            name: accountMeta.name,
+          },
           amount: amountFloat,
           tx_hash,
           tx_status: "approved",
@@ -737,9 +761,17 @@ async function pending_deposit_transaction(req, res) {
       rates.findOne(),
     ]);
 
+    const accountMeta = await account_meta.findOne({
+      address: account_from.address,
+    });
+
     const transaction = await transactions.create({
       from,
       to: account_main?.address,
+      account_metas: {
+        email: accountMeta.email,
+        name: accountMeta.name,
+      },
       amount,
       tx_hash,
       tx_type: "deposit",
@@ -1053,9 +1085,17 @@ async function create_exchange_transaction(req, res) {
 
     let denomination = 0;
 
+    const accountMeta = await account_meta.findOne({
+      address: account_main.address,
+    });
+
     const createdTransaction = await transactions.create({
       from: address,
       to: account_main?.address,
+      account_metas: {
+        email: accountMeta.email,
+        name: accountMeta.name,
+      },
       amount,
       tx_hash,
       tx_status: "pending",
@@ -1440,6 +1480,10 @@ async function make_withdrawal(req, res) {
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
+    const accountMeta = await account_meta.findOne({
+      address: mainAccount.address,
+    });
+
     const [updatedMainAcc] = await Promise.all([
       accounts.findOneAndUpdate(
         { account_owner: address, account_category: "main" },
@@ -1449,6 +1493,10 @@ async function make_withdrawal(req, res) {
       transactions.create({
         from: "main account",
         to: address_to,
+        account_metas: {
+          email: accountMeta.email,
+          name: accountMeta.name,
+        },
         amount,
         tx_hash,
         tx_type: "withdraw",
@@ -1536,21 +1584,30 @@ async function direct_deposit(req, res) {
           { $inc: { balance: tokenAmount } },
           { new: true }
         ),
-        transactions.create({
-          from: address,
-          to: "main account",
-          amount: tokenAmount,
-          tx_hash,
-          tx_type: "deposit",
-          tx_currency: "ether",
-          tx_status: "approved",
-          tx_external_hash: hash,
-          tx_options: {
-            method: "direct",
-          },
-          A1_price: ratesObj?.atr?.usd ?? 2,
-        }),
       ]);
+
+      const accountMeta = await account_meta.findOne({
+        address: updatedAccount.address,
+      });
+
+      const newTransaction = transactions.create({
+        from: address,
+        to: "main account",
+        account_metas: {
+          email: accountMeta.email,
+          name: accountMeta.name,
+        },
+        amount: tokenAmount,
+        tx_hash,
+        tx_type: "deposit",
+        tx_currency: "ether",
+        tx_status: "approved",
+        tx_external_hash: hash,
+        tx_options: {
+          method: "direct",
+        },
+        A1_price: ratesObj?.atr?.usd ?? 2,
+      });
 
       return main_helper.success_response(res, {
         message: "successfull transaction",
@@ -1639,7 +1696,11 @@ async function unstake_transaction(req, res) {
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
-    const [updatedAccount] = await Promise.all([
+    const accountMeta = await account_meta.findOne({
+      address: mainAccount.address,
+    });
+
+    const [updatedAccount, trandaction] = await Promise.all([
       accounts.findOneAndUpdate(
         { account_owner: address, account_category: "main" },
         { $inc: { balance: 0 - result.amount / 10 ** 18 } },
@@ -1648,6 +1709,10 @@ async function unstake_transaction(req, res) {
       transactions.create({
         from: address,
         to: address,
+        account_metas: {
+          email: accountMeta.email,
+          name: accountMeta.name,
+        },
         amount: result.amount / 10 ** 18,
         tx_hash,
         tx_type: "unstake",
@@ -1680,7 +1745,7 @@ async function harvest_transaction(req, res) {
 
     address = address.toLowerCase();
 
-    const [ratesObj] = await Promise.all([
+    const [mainAccount, ratesObj] = await Promise.all([
       accounts.findOne({
         account_owner: address,
         account_category: "main",
@@ -1688,10 +1753,18 @@ async function harvest_transaction(req, res) {
       rates.findOne(),
     ]);
 
+    const accountMeta = await account_meta.findOne({
+      address: mainAccount.address,
+    });
+
     const [createTransactions] = await Promise.all([
       transactions.create({
         from: resept.from,
         to: address,
+        account_metas: {
+          email: accountMeta.email,
+          name: accountMeta.name,
+        },
         amount: resept.events.HARVEST.returnValues.amount / 10 ** 18,
         tx_hash: resept.transactionHash,
         tx_type: "harvest",
@@ -1729,6 +1802,10 @@ async function exchange(req, res) {
       }),
       rates.findOne(),
     ]);
+
+    const accountMeta = await account_meta.findOne({
+      address: mainAccount.address,
+    });
 
     if (!mainAccount) {
       return res
@@ -1794,6 +1871,10 @@ async function exchange(req, res) {
       transactions.create({
         from: address,
         to: address,
+        account_metas: {
+          email: accountMeta.email,
+          name: accountMeta.name,
+        },
         amount: fromAmount,
         tx_hash,
         tx_type: "exchange",
@@ -1916,10 +1997,18 @@ async function stakeCurrency(req, res) {
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
 
+    const accountMeta = await account_meta.findOne({
+      address: mainAccount.address,
+    });
+
     // Create transaction
     const createTransactionPromise = transactions.create({
       from: address,
       to: address,
+      account_metas: {
+        email: accountMeta.email,
+        name: accountMeta.name,
+      },
       amount: amount,
       tx_hash,
       tx_status: "approved",
