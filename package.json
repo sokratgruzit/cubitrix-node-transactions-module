@@ -27,7 +27,7 @@
     "web3": "^1.8.1"
   },
   "peerDependencies": {
-    "@cubitrix/models": ">=0.1.67",
+    "@cubitrix/models": ">=0.1.68",
     "axios": ">=1.4.0",
     "jsonwebtoken": ">=9.0.0"
   },
