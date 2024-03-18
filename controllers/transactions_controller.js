@@ -1795,6 +1795,12 @@ async function exchange(req, res) {
         .status(400)
         .send({ success: false, message: "you are not logged in" });
 
+    let currencyFrom = fromAccType.toLowerCase();
+    let currencyTo = toAccType.toLowerCase();
+
+    if (currencyFrom === "atar") currencyFrom = "atr";
+    if (currencyTo === "atar") currencyTo = "atr";
+
     const [mainAccount, ratesObj] = await Promise.all([
       accounts.findOne({
         account_owner: address,
@@ -1803,6 +1809,10 @@ async function exchange(req, res) {
       rates.findOne(),
     ]);
 
+    if (!ratesObj[currencyFrom] || isNaN(ratesObj[currencyFrom].usd) || ratesObj[currencyFrom].usd === 0 || !ratesObj[currencyTo] || isNaN(ratesObj[currencyTo].usd) || ratesObj[currencyTo].usd === 0) {
+      return res.status(400).send({ success: false, message: "Exchange failed" });
+    }
+    
     const accountMeta = await account_meta.findOne({
       address: address.toLowerCase(),
     });
@@ -1866,6 +1876,7 @@ async function exchange(req, res) {
         }
       );
     }
+
     const [mainAccountUpdated] = await Promise.all([
       query,
       transactions.create({
