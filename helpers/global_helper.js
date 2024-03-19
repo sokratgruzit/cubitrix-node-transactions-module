@@ -2,20 +2,41 @@ const main_helper = require("../helpers/index");
 var Web3 = require("web3");
 const {options, accounts, account_meta} = require("@cubitrix/models");
 const decryptEnv = require("../utils/decryptEnv");
+var nodemailer = require("nodemailer");
 
+const USE_CUSTOM_SMTP = process.env.USE_CUSTOM_SMTP;
+const CUSTOM_SMTP_HOST = process.env.CUSTOM_SMTP_HOST;
+const CUSTOM_SMTP_PORT = process.env.CUSTOM_SMTP_PORT;
+const CUSTOM_SMTP_SECURE = process.env.CUSTOM_SMTP_SECURE;
+const CUSTOM_SMTP_USER = process.env.CUSTOM_SMTP_USER;
+const CUSTOM_SMTP_PASS = process.env.CUSTOM_SMTP_PASS;
 const SENDER_EMAIL_PASSWORD = process.env.SENDER_EMAIL_PASSWORD;
 
 const senderEmailPass = decryptEnv(SENDER_EMAIL_PASSWORD);
 
-var nodemailer = require("nodemailer");
+let transporter, transporterConfig;
 
-var transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.SENDER_EMAIL,
-    pass: senderEmailPass,
-  },
-});
+if (USE_CUSTOM_SMTP === "true") {
+  transporterConfig = {
+    host: CUSTOM_SMTP_HOST,
+    port: CUSTOM_SMTP_PORT,
+    secure: CUSTOM_SMTP_SECURE === 'true',
+    auth: {
+      user: CUSTOM_SMTP_USER,
+      pass: CUSTOM_SMTP_PASS,
+    },
+  };
+} else {
+  transporterConfig = {
+    service: "gmail",
+    auth: {
+      user: process.env.SENDER_EMAIL,
+      pass: senderEmailPass,
+    },
+  };
+}
+
+transporter = nodemailer.createTransport(transporterConfig);
 
 async function get_option_by_key(key) {
   try {
