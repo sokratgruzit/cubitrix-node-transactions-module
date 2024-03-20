@@ -1,6 +1,6 @@
 {
   "name": "@cubitrix/cubitrix-node-transactions-module",
-  "version": "0.1.315",
+  "version": "0.1.316",
   "description": "module for managing globals data",
   "main": "transactions.js",
   "scripts": {
@@ -10,7 +10,7 @@
   "author": "jinx",
   "license": "MIT",
   "dependencies": {
-    "@cubitrix/models": ">=0.1.68",
+    "@cubitrix/models": ">=0.1.73",
     "crypto-js": "^4.2.0",
     "axios": ">=1.4.0",
     "bignumber.js": "^9.1.2",
@@ -27,7 +27,7 @@
     "web3": "^1.8.1"
   },
   "peerDependencies": {
-    "@cubitrix/models": ">=0.1.68",
+    "@cubitrix/models": ">=0.1.73",
     "axios": ">=1.4.0",
     "jsonwebtoken": ">=9.0.0"
   },
