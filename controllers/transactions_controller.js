@@ -335,7 +335,7 @@ async function make_transfer(req, res) {
         "Please provide all necessary values"
       );
     }
-
+    //transfer by email
     const isEmail = /\S+@\S+\.\S+/.test(to);
     if (isEmail) {
       let recipientAccount = await account_meta.findOne({ email: to });
@@ -351,6 +351,7 @@ async function make_transfer(req, res) {
     } else {
       to = to.toLowerCase();
     }
+    ////transfer by email
 
     let tx_hash_generated = global_helper.make_hash();
     let tx_hash = ("0x" + tx_hash_generated).toLowerCase();
@@ -548,8 +549,6 @@ async function verify_external_transaction(req, res) {
         res,
         "Please provide verification code"
       );
-
-    console.log(address, code, "address, code");
 
     const verifiedTx = await verify_txs.findOne({
       from: address,
@@ -1795,6 +1794,12 @@ async function exchange(req, res) {
         .status(400)
         .send({ success: false, message: "you are not logged in" });
 
+    let currencyFrom = fromAccType.toLowerCase();
+    let currencyTo = toAccType.toLowerCase();
+
+    if (currencyFrom === "atar") currencyFrom = "atr";
+    if (currencyTo === "atar") currencyTo = "atr";
+
     const [mainAccount, ratesObj] = await Promise.all([
       accounts.findOne({
         account_owner: address,
@@ -1802,6 +1807,19 @@ async function exchange(req, res) {
       }),
       rates.findOne(),
     ]);
+
+    if (
+      !ratesObj[currencyFrom] ||
+      isNaN(ratesObj[currencyFrom].usd) ||
+      ratesObj[currencyFrom].usd === 0 ||
+      !ratesObj[currencyTo] ||
+      isNaN(ratesObj[currencyTo].usd) ||
+      ratesObj[currencyTo].usd === 0
+    ) {
+      return res
+        .status(400)
+        .send({ success: false, message: "Exchange failed" });
+    }
 
     const accountMeta = await account_meta.findOne({
       address: address.toLowerCase(),
@@ -1866,6 +1884,7 @@ async function exchange(req, res) {
         }
       );
     }
+
     const [mainAccountUpdated] = await Promise.all([
       query,
       transactions.create({
