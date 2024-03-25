@@ -1429,7 +1429,7 @@ async function make_withdrawal(req, res) {
           { new: true }
         ),
         transactions.create({
-          from: "main account",
+          from: address.toLowerCase(),
           to: address_to,
           amount: amount,
           tx_hash,
@@ -1490,7 +1490,7 @@ async function make_withdrawal(req, res) {
         { new: true }
       ),
       transactions.create({
-        from: "main account",
+        from: address.toLowerCase(),
         to: address_to,
         account_metas: {
           email: accountMeta?.email,
