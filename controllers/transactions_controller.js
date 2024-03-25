@@ -1408,7 +1408,7 @@ async function make_withdrawal(req, res) {
 
       const pendingWithdrawalAmount = treasury.pendingWithdrawals["ATR"] || 0;
       const currentIncomingAmount = treasury.incoming["ATR"] || 0;
-
+      
       if (pendingWithdrawalAmount + amount > currentIncomingAmount) {
         return res
           .status(400)
@@ -1607,6 +1607,19 @@ async function direct_deposit(req, res) {
         },
         A1_price: ratesObj?.atr?.usd ?? 2,
       });
+
+      //Get treasury balance
+      let tokenContract = new web3.eth.Contract(minABI, tokenAddress);
+      let decimals = await tokenContract.methods.decimals().call();
+      let getBalance = await tokenContract.methods.balanceOf(treasuryAddress).call();
+
+      let balance = new BigNumber(getBalance);
+      let pow = new BigNumber(10).pow(decimals);
+
+      let balanceInEth = balance.div(pow);
+      let calculatedBalance = balanceInEth + tokenAmount;
+      console.log('balance', balanceInEth)
+      console.log('balance with deposit', calculatedBalance);
 
       return main_helper.success_response(res, {
         message: "successfull transaction",
