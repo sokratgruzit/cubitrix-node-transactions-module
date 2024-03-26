@@ -1406,17 +1406,52 @@ async function make_withdrawal(req, res) {
           .json(main_helper.error_message("Insufficient funds"));
       }
 
-      const pendingWithdrawalAmount = treasury.pendingWithdrawals["ATR"] || 0;
-      const currentIncomingAmount = treasury.incoming["ATR"] || 0;
+      const pendingWithdrawalAmount = Number(treasury.pendingWithdrawals["ATR"]) || 0;
+      const currentIncomingAmount = Number(treasury.incoming["ATR"]) || 0;
       
-      if (pendingWithdrawalAmount + amount > currentIncomingAmount) {
+      //Get treasury balance
+      let bnbBalanceLimit = 0.003;
+      let tokenContract = new web3.eth.Contract(minABI, tokenAddress);
+      let decimals = await tokenContract.methods.decimals().call();
+      let getBalance = await tokenContract.methods.balanceOf(treasuryAddress).call();
+
+      let bigIntBalance = new BigNumber(getBalance);
+      let pow = new BigNumber(10).pow(decimals);
+
+      let balance = bigIntBalance.div(pow);
+      balance.toString();
+
+      // Get BNB balance
+      let bnbBalanceWei = await web3.eth.getBalance(treasuryAddress);
+      let bnbBalance = web3.utils.fromWei(bnbBalanceWei, 'ether');
+      
+      if (
+        pendingWithdrawalAmount + amount > currentIncomingAmount ||
+        Number(balance) < amount ||
+        Number(bnbBalance) < bnbBalanceLimit
+      ) {
         return res
-          .status(400)
-          .json(
-            main_helper.error_message(
-              "Withdrawal with this amount is not possible at the moment"
-            )
+        .status(400)
+        .json(
+          main_helper.error_message(
+            "Withdrawal with this amount is not possible at the moment"
+          )
+        );
+      } else {
+        if (treasury) {
+          let incoming = treasury.incoming;
+          incoming.ATR = balance;
+
+          await treasuries.findOneAndUpdate(
+            {},
+            { incoming: incoming },
+            { new: true }
           );
+    
+          console.log("Incoming value updated successfully");
+        } else {
+          console.log("No document found in the collection.");
+        }
       }
 
       let tx_hash_generated = global_helper.make_hash();
@@ -1429,7 +1464,7 @@ async function make_withdrawal(req, res) {
           { new: true }
         ),
         transactions.create({
-          from: "main account",
+          from: address.toLowerCase(),
           to: address_to,
           amount: amount,
           tx_hash,
@@ -1462,10 +1497,11 @@ async function make_withdrawal(req, res) {
     }
 
     const currency = accountType?.toUpperCase();
-    const pendingWithdrawalAmount = treasury.pendingWithdrawals[currency] || 0;
-    const currentIncomingAmount = treasury.incoming[currency] || 0;
+    const pendingWithdrawalAmount = Number(treasury.pendingWithdrawals[currency]) || 0;
+    const currentIncomingAmount = Number(treasury.incoming[currency]) || 0;
 
     if (pendingWithdrawalAmount + amount > currentIncomingAmount) {
+      //Here we need to add check of real treasury balance for currency
       return res
         .status(400)
         .json(
@@ -1490,7 +1526,7 @@ async function make_withdrawal(req, res) {
         { new: true }
       ),
       transactions.create({
-        from: "main account",
+        from: address.toLowerCase(),
         to: address_to,
         account_metas: {
           email: accountMeta?.email,
@@ -1533,7 +1569,7 @@ async function make_withdrawal(req, res) {
 
 async function direct_deposit(req, res) {
   try {
-    let { hash } = req.body;
+    let { hash, account_currency } = req.body;
 
     let address = req.address;
 
@@ -1556,9 +1592,10 @@ async function direct_deposit(req, res) {
         .json({ error: "Transaction with this hash already exists." });
     }
 
-    const [tx, ratesObj] = await Promise.all([
+    const [tx, ratesObj, treasury] = await Promise.all([
       web3.eth.getTransaction(hash),
       rates.findOne(),
+      treasuries.findOne()
     ]);
 
     const inputHex = tx.input;
@@ -1613,13 +1650,27 @@ async function direct_deposit(req, res) {
       let decimals = await tokenContract.methods.decimals().call();
       let getBalance = await tokenContract.methods.balanceOf(treasuryAddress).call();
 
-      let balance = new BigNumber(getBalance);
+      let bigIntBalance = new BigNumber(getBalance);
       let pow = new BigNumber(10).pow(decimals);
 
-      let balanceInEth = balance.div(pow);
-      let calculatedBalance = balanceInEth + tokenAmount;
-      console.log('balance', balanceInEth)
-      console.log('balance with deposit', calculatedBalance);
+      let balance = bigIntBalance.div(pow);
+      
+      if (treasury) {
+        if (account_currency === "ATR") {
+          let incoming = treasury.incoming;
+          incoming.ATR = balance;
+
+          await treasuries.findOneAndUpdate(
+            {},
+            { incoming: incoming },
+            { new: true }
+          );
+        }
+  
+        console.log("Incoming value updated successfully");
+      } else {
+        console.log("No document found in the collection.");
+      }
 
       return main_helper.success_response(res, {
         message: "successfull transaction",
